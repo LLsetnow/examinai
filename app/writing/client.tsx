@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { WritingTest } from "@/components/writing/writing-test";
 import {
-  WritingAssessment,
+  WritingAssessmentReport,
   type AssessmentData,
-} from "@/components/writing/writing-assessment";
+} from "@/components/writing/writing-assessment-report";
 import { WritingSubmissionView } from "@/components/writing/writing-submission-view";
 import { Spinner } from "@/components/ui/spinner";
 import { useI18n } from "@/lib/i18n/provider";
@@ -527,7 +527,7 @@ export default function WritingPageClient({
     const active = assessments[activeIndex];
     return (
       <div className="flex h-dvh flex-col">
-        <WritingAssessment
+        <WritingAssessmentReport
           assessment={active.assessment}
           submission={active.submission}
           conversationId={active.conversationId}

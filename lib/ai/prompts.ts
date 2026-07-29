@@ -123,6 +123,8 @@ Respond with ONLY valid JSON:
   "grammaticalRangeHighLevel": "1-2 sentence summary",
   "grammaticalRangeStrengths": ["strength 1", "strength 2", ...],
   "grammaticalRangeWeaknesses": ["weakness 1", "weakness 2", ...],
+  "essayHighlights": [{"text": "exact excerpt from the student's original essay", "kind": "error | suggestion | strength", "explanation": "brief explanation"}],
+  "synonymSuggestions": [{"text": "exact original word or phrase", "alternatives": ["alternative 1", "alternative 2"], "note": "brief usage note"}],
   "lexicalResourceScore": a whole number between 0 and 9,
   "grammaticalRangeScore": a whole number between 0 and 9
 }
@@ -138,6 +140,8 @@ ${WRITING_FEEDBACK_GUIDELINES}
 - Common Grammar issues: complex sentences that collapse mid-way, article errors, subject-verb agreement, countable/uncountable nouns, preposition errors
 - It is important to assess the error severity. Clearly differentiate between something that is incorrect and something that is slightly unidiomatic
 - Task 1 specific: vague trend vocabulary, wrong tenses for past data, mishandled units
+- essayHighlights: provide 3-8 items. The text MUST be an exact, contiguous excerpt from the student's original essay. Use "error" only for serious factual/trend errors or grammar errors; use "suggestion" for expression, precision, or collocation improvements; use "strength" only for an effective complete sentence. Do not mark the same text twice.
+- synonymSuggestions: provide 3-6 items. The text MUST be an exact, contiguous word or phrase from the student's original essay. Offer 2-4 natural alternatives that fit the original context. Do not include an item if a clean contextual replacement is not possible.
 
 Lexical Resource Band Descriptors:
 - Band 9: Uses a wide range of vocabulary with very natural and sophisticated control of lexical features; rare minor errors occur only as 'slips'.
@@ -168,6 +172,7 @@ Respond with ONLY valid JSON:
   "expandIdeas": ["suggestion 1", "suggestion 2", ...],
   "improvedEssay": "Band 8-9 rewrite keeping same position/structure, with advanced vocabulary and better arguments",
   "vocabularyExplanations": [{"word": "word", "meaning": "definition", "usage": "an example sentence using the word"}],
+  "topicPhrases": [{"text": "exact phrase from the student's original essay", "label": "argument | cohesion | task response", "explanation": "brief explanation"}],
   "alternativeDirection": "2-3 sentence description of the alternative perspective",
   "alternativeEssay": "complete Band 8-9 essay from the alternative perspective",
   "alternativeVocabulary": [{"word": "word", "meaning": "definition", "usage": "an example sentence using the word"}]
@@ -179,6 +184,7 @@ Rules:
 - vocabularyExplanations: 3-5 advanced words that DO NOT appear anywhere in the student's original essay. Do not include words the student already used - only suggest genuinely new vocabulary
 - alternativeEssay: Complete essay from a different perspective
 - alternativeVocabulary: 3-5 advanced words from the alternative essay that DO NOT appear anywhere in the student's original essay. Do not include words the student already used - only suggest genuinely new vocabulary
+- topicPhrases: provide 3-6 useful phrases from the student's original essay. The text MUST be an exact, contiguous excerpt. Label each with a concise category such as argument, cohesion, or task response, and explain how the phrase functions in this response.
 - Use \\n\\n for paragraph breaks`;
 
 export const WRITING_EXPERT_4_TASK1_PROMPT = `You are an IELTS Writing Expert responsible for providing an improved version with advanced vocabulary for Task 1.
@@ -186,12 +192,14 @@ export const WRITING_EXPERT_4_TASK1_PROMPT = `You are an IELTS Writing Expert re
 Respond with ONLY valid JSON:
 {
   "improvedEssay": "Band 8-9 rewrite with clear overview, key features, accurate data, and sophisticated vocabulary",
-  "vocabularyExplanations": [{"word": "word", "meaning": "definition", "usage": "an example sentence using the word"}]
+  "vocabularyExplanations": [{"word": "word", "meaning": "definition", "usage": "an example sentence using the word"}],
+  "topicPhrases": [{"text": "exact phrase from the student's original essay", "label": "trend | comparison | overview", "explanation": "brief explanation"}]
 }
 
 Rules:
 - Rewrite at Band 8-9 level with clear overview, well-selected key features, and sophisticated trend/comparison vocabulary
 - vocabularyExplanations: 3-5 useful Task 1 words that DO NOT appear anywhere in the student's original essay. Do not include words the student already used - only suggest genuinely new vocabulary
+- topicPhrases: provide 3-6 useful phrases from the student's original essay. The text MUST be an exact, contiguous excerpt. Label each with a concise category such as trend, comparison, or overview, and explain how the phrase functions in this response.
 - Use \\n\\n for paragraph breaks
 - Accurately reflect the data/image from the question`;
 

@@ -44,6 +44,24 @@ const languageCorrectionSchema = z.object({
   correctedEssay: z.string(),
 });
 
+const essayHighlightSchema = z.object({
+  text: z.string(),
+  kind: z.enum(["error", "suggestion", "strength"]),
+  explanation: z.string(),
+});
+
+const synonymSuggestionSchema = z.object({
+  text: z.string(),
+  alternatives: z.array(z.string()),
+  note: z.string(),
+});
+
+const topicPhraseSchema = z.object({
+  text: z.string(),
+  label: z.string(),
+  explanation: z.string(),
+});
+
 const languageFeedbackSchema = z.object({
   keyChanges: z.array(z.string()),
   lexicalResourceHighLevel: z.string(),
@@ -52,6 +70,8 @@ const languageFeedbackSchema = z.object({
   grammaticalRangeHighLevel: z.string(),
   grammaticalRangeStrengths: z.array(z.string()),
   grammaticalRangeWeaknesses: z.array(z.string()),
+  essayHighlights: z.array(essayHighlightSchema),
+  synonymSuggestions: z.array(synonymSuggestionSchema),
   lexicalResourceScore: z.number(),
   grammaticalRangeScore: z.number(),
 });
@@ -65,12 +85,14 @@ const vocabularySchema = z.object({
 const improvementTask1Schema = z.object({
   improvedEssay: z.string(),
   vocabularyExplanations: z.array(vocabularySchema),
+  topicPhrases: z.array(topicPhraseSchema),
 });
 
 const improvementTask2Schema = z.object({
   expandIdeas: z.array(z.string()),
   improvedEssay: z.string(),
   vocabularyExplanations: z.array(vocabularySchema),
+  topicPhrases: z.array(topicPhraseSchema),
   alternativeDirection: z.string(),
   alternativeEssay: z.string(),
   alternativeVocabulary: z.array(vocabularySchema),
@@ -141,6 +163,10 @@ function normalizeLanguageAnalysis(raw: any, isFinal = false) {
     grammaticalRangeWeaknesses,
     correctedEssay: raw.correctedEssay ?? "",
     keyChanges: ensureArray(raw.keyChanges),
+    essayHighlights: Array.isArray(raw.essayHighlights) ? raw.essayHighlights : [],
+    synonymSuggestions: Array.isArray(raw.synonymSuggestions)
+      ? raw.synonymSuggestions
+      : [],
     lexicalResourceScore,
     grammaticalRangeScore,
   };
@@ -154,6 +180,7 @@ function normalizeImprovement(raw: any, taskNumber: string, essay: string) {
       Array.isArray(raw.vocabularyExplanations) ? raw.vocabularyExplanations : [],
       essay,
     ),
+    topicPhrases: Array.isArray(raw.topicPhrases) ? raw.topicPhrases : [],
   };
   if (taskNumber === "2") {
     return {

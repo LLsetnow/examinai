@@ -116,6 +116,13 @@ export interface Translations {
     retry: string;
     viewBandDescriptors: string;
     bandDescriptors: string;
+    synonyms: string;
+    topicPhrases: string;
+    report: string;
+    severeError: string;
+    suggestion: string;
+    highlight: string;
+    noMappedFeedback: string;
   };
   onboarding: {
     chooseLanguage: string;
@@ -245,6 +252,13 @@ export const translations: Record<Language, Translations> = {
       retry: "Retry",
       viewBandDescriptors: "View Band Descriptors",
       bandDescriptors: "Band Descriptors",
+      synonyms: "Synonyms",
+      topicPhrases: "Topic Phrases",
+      report: "Writing Report",
+      severeError: "Serious error or grammar issue",
+      suggestion: "Expression improvement",
+      highlight: "Strength",
+      noMappedFeedback: "Mapped feedback will appear for newly generated assessments.",
     },
     onboarding: {
       chooseLanguage: "Choose Your Language",
@@ -372,6 +386,13 @@ export const translations: Record<Language, Translations> = {
       retry: "Thử lại",
       viewBandDescriptors: "Xem tiêu chí chấm điểm",
       bandDescriptors: "Tiêu chí chấm điểm",
+      synonyms: "Từ đồng nghĩa",
+      topicPhrases: "Cụm từ theo chủ đề",
+      report: "Báo cáo viết",
+      severeError: "Lỗi nghiêm trọng hoặc ngữ pháp",
+      suggestion: "Cải thiện cách diễn đạt",
+      highlight: "Điểm mạnh",
+      noMappedFeedback: "Phản hồi có liên kết với bài gốc sẽ xuất hiện ở các bài chấm mới.",
     },
     onboarding: {
       chooseLanguage: "Chọn ngôn ngữ",

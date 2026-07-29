@@ -17,6 +17,26 @@ export interface VocabularyExplanation {
   usage: string;
 }
 
+export type EssayHighlightKind = "error" | "suggestion" | "strength";
+
+export interface EssayHighlight {
+  text: string;
+  kind: EssayHighlightKind;
+  explanation: string;
+}
+
+export interface SynonymSuggestion {
+  text: string;
+  alternatives: string[];
+  note: string;
+}
+
+export interface TopicPhrase {
+  text: string;
+  label: string;
+  explanation: string;
+}
+
 export interface WritingOverviewFeedback {
   overview: string;
   strengths: string[];
@@ -43,6 +63,8 @@ export interface WritingLanguageFeedback {
   grammaticalRangeWeaknesses: string[];
   correctedEssay: string;
   keyChanges: string[];
+  essayHighlights?: EssayHighlight[];
+  synonymSuggestions?: SynonymSuggestion[];
   lexicalResourceScore: number | null;
   grammaticalRangeScore: number | null;
 }
@@ -51,6 +73,7 @@ export interface WritingImprovementTask2Feedback {
   expandIdeas: string[];
   improvedEssay: string;
   vocabularyExplanations: VocabularyExplanation[];
+  topicPhrases?: TopicPhrase[];
   alternativeDirection: string;
   alternativeEssay: string;
   alternativeVocabulary: VocabularyExplanation[];
@@ -59,6 +82,7 @@ export interface WritingImprovementTask2Feedback {
 export interface WritingImprovementTask1Feedback {
   improvedEssay: string;
   vocabularyExplanations: VocabularyExplanation[];
+  topicPhrases?: TopicPhrase[];
 }
 
 export type WritingImprovementFeedback =

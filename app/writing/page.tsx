@@ -65,12 +65,15 @@ export default async function WritingPage({
           grammaticalRangeWeaknesses: assistantMsg.grammaticalRangeWeaknesses,
           correctedEssay: assistantMsg.correctedEssay,
           keyChanges: assistantMsg.keyChanges,
+          essayHighlights: assistantMsg.essayHighlights,
+          synonymSuggestions: assistantMsg.synonymSuggestions,
           lexicalResourceScore: assistantMsg.lexicalResourceScore,
           grammaticalRangeScore: assistantMsg.grammaticalRangeScore,
         } : null,
         improvement: assistantMsg.improvedEssay != null ? {
           improvedEssay: assistantMsg.improvedEssay,
           vocabularyExplanations: assistantMsg.vocabularyExplanations,
+          topicPhrases: assistantMsg.topicPhrases,
           ...(assistantMsg.expandIdeas != null ? {
             expandIdeas: assistantMsg.expandIdeas,
             alternativeDirection: assistantMsg.alternativeDirection,
