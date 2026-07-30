@@ -1,6 +1,25 @@
-import type { Conversation, Message } from "@/lib/db/schema";
-
 // Writing
+
+export interface CambridgeQuestionSource {
+  kind: "cambridge";
+  book: number;
+  test: number;
+  taskNumber: "1" | "2";
+}
+
+/** Browser-local overrides for OpenAI-compatible providers. Keys are never returned by the server. */
+export interface AiProviderSettings {
+  scoring?: {
+    baseURL?: string;
+    apiKey?: string;
+    model?: string;
+  };
+  vision?: {
+    baseURL?: string;
+    apiKey?: string;
+    model?: string;
+  };
+}
 
 export interface WritingSubmission {
   taskNumber: "1" | "2";
@@ -9,6 +28,7 @@ export interface WritingSubmission {
   imageUrl?: string;
   wordCount: number;
   timeSpent?: number;
+  questionSource?: CambridgeQuestionSource;
 }
 
 export interface VocabularyExplanation {
@@ -88,61 +108,3 @@ export interface WritingImprovementTask1Feedback {
 export type WritingImprovementFeedback =
   | WritingImprovementTask2Feedback
   | WritingImprovementTask1Feedback;
-
-// Speaking
-
-export interface SpeakingSessionConfig {
-  parts: ("1" | "2" | "3")[];
-  questions: SpeakingQuestionData[];
-}
-
-export interface SpeakingQuestionData {
-  partNumber: "1" | "2" | "3";
-  title: string;
-  content: string;
-}
-
-export interface SpeakingFeedback {
-  partNumber: string;
-  reaction: string;
-  comment: string;
-  correctedResponse: string;
-  expansionIdeas: string[];
-  improvedResponse: string;
-  vocabularyExplanations: VocabularyExplanation[];
-  nextQuestion: string | null;
-  nextQuestionPartNumber: string | null;
-}
-
-// Chat
-
-export interface ChatMessageDisplay {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  createdAt: Date;
-  isStreaming?: boolean;
-  writingSubmission?: WritingSubmission;
-  speakingFeedback?: SpeakingFeedback;
-}
-
-export interface ConversationWithMessages extends Conversation {
-  messages: Message[];
-}
-
-// Onboarding
-
-export interface OnboardingState {
-  step: "language" | "auth" | "complete";
-  language: "en" | "vi";
-}
-
-// Local Storage
-
-export interface LocalStorageData {
-  language: "en" | "vi";
-  theme: "light" | "dark";
-  onboardingComplete: boolean;
-  activeConversationId?: string;
-  guestConversations: string[];
-}

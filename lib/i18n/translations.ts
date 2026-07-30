@@ -1,407 +1,323 @@
-export type Language = "en" | "vi";
+export type Language = "zh" | "en";
 
 export interface Translations {
   common: {
-    appName: string;
-    cancel: string;
-    submit: string;
-    understood: string;
-    close: string;
-    error: string;
-    signIn: string;
-    signOut: string;
     language: string;
-    theme: string;
-    light: string;
-    dark: string;
-    share: string;
-    newChat: string;
-    sendMessage: string;
-    aiDisclaimer: string;
-    back: string;
+    newEssay: string;
+    retry: string;
+    history: string;
     home: string;
-    next: string;
-    confirm: string;
-    or: string;
-  };
-  chat: {
-    howCanIHelp: string;
-    howCanIHelpSubtitle: string;
-    writing: string;
-    speaking: string;
-    writingDescription: string;
-    speakingDescription: string;
-    noMessages: string;
-    typeMessage: string;
-    linkCopied: string;
-    collapseSidebar: string;
-    toggleSidebar: string;
-    expandSidebar: string;
-    deleteConversation: string;
-    deleteConfirmation: string;
-    untitledConversation: string;
-    renameConversation: string;
-    searchingKnowledge: string;
   };
   writing: {
-    startWriting: string;
-    submitExistingEssay: string;
+    appSubtitle: string;
+    noAccount: string;
+    instantFeedback: string;
+    heroTitleStart: string;
+    heroTitleAccent: string;
+    heroDescription: string;
+    featureScores: string;
+    featureCorrections: string;
+    featureVocabulary: string;
+    startAssessment: string;
+    noHistory: string;
+    questionBank: string;
+    questionBankDescription: string;
+    book: string;
+    test: string;
+    useQuestion: string;
+    loadingQuestion: string;
+    bankUnavailable: string;
+    source: string;
+    manualEditHint: string;
     task1: string;
     task2: string;
     question: string;
-    essay: string;
-    wordCount: string;
-    submit: string;
+    questionPlaceholder: string;
+    chart: string;
+    optional: string;
+    remove: string;
     uploadImage: string;
-    dragDropImage: string;
-    timerExpired: string;
-    timerExpiredMessage: string;
-    startTest: string;
-    questionText: string;
-    writeYourEssay: string;
-    pasteYourEssay: string;
-    minutes: string;
-    selectTask: string;
-    task1Description: string;
-    task2Description: string;
-    backConfirmation: string;
-    enterQuestion: string;
     uploadedChart: string;
+    yourEssay: string;
+    essayPlaceholder: string;
+    wordCount: string;
+    assess: string;
+    privacyNotice: string;
+    questionText: string;
     taskChart: string;
-  };
-  speaking: {
-    part1: string;
-    part2: string;
-    part3: string;
-    startSpeaking: string;
-    showText: string;
-    recording: string;
-    speakingFeedback: string;
-    tapToSpeak: string;
-    autoplay: string;
-    hideText: string;
-    preparingQuestion: string;
-    part1Description: string;
-    part2Description: string;
-    part3Description: string;
+    localChartFacts: string;
+    visionChartFallback: string;
+    settings: string;
+    settingsTitle: string;
+    settingsDescription: string;
+    settingsClose: string;
+    settingsScoring: string;
+    settingsScoringDescription: string;
+    settingsVision: string;
+    settingsVisionDescription: string;
+    settingsApiURL: string;
+    settingsApiURLPlaceholder: string;
+    settingsApiKey: string;
+    settingsApiKeyPlaceholder: string;
+    settingsModel: string;
+    settingsModelPlaceholder: string;
+    settingsSelectModel: string;
+    settingsFetchModels: string;
+    settingsNeedConnection: string;
+    settingsNoModels: string;
+    settingsModelsError: string;
+    settingsSaveError: string;
+    settingsLocalOnly: string;
+    settingsReset: string;
+    settingsSave: string;
+    historyTitle: string;
+    historyDescription: string;
+    noHistoryRecords: string;
+    historyLocalOnly: string;
+    historyOpenReport: string;
+    historyPartial: string;
+    historyComplete: string;
+    historyLoadError: string;
+    historyDelete: string;
+    historyDeleteConfirm: string;
+    historyDeleteError: string;
   };
   feedback: {
     taskResponse: string;
+    taskAchievement: string;
     coherenceCohesion: string;
     lexicalResource: string;
     grammaticalRange: string;
     strengths: string;
     weaknesses: string;
-    noWeaknesses: string;
     correction: string;
-    correctedEssay: string;
-    expandIdeas: string;
-    alternativeApproach: string;
-    alternativeDirection: string;
-    alternativeEssay: string;
-    improvedVersion: string;
-    vocabularyExplanations: string;
-    bandScore: string;
-    keyChanges: string;
     overview: string;
-    taskAchievement: string;
-    viewSubmission: string;
-    viewFeedback: string;
     original: string;
-    corrected: string;
     waitingForFeedback: string;
     overall: string;
+    bandScore: string;
     assessmentFailed: string;
     assessmentPartialError: string;
-    retry: string;
-    viewBandDescriptors: string;
-    bandDescriptors: string;
     synonyms: string;
     topicPhrases: string;
-    report: string;
     severeError: string;
     suggestion: string;
     highlight: string;
     noMappedFeedback: string;
   };
-  onboarding: {
-    chooseLanguage: string;
-    languageRecommendation: string;
-    continueWithGoogle: string;
-    continueWithoutAccount: string;
-    signInBenefits: string;
-    welcome: string;
-    recommended: string;
-  };
 }
 
 export const translations: Record<Language, Translations> = {
-  en: {
+  zh: {
     common: {
-      appName: "Examinai",
-      cancel: "Cancel",
-      submit: "Submit",
-      understood: "Understood",
-      close: "Close",
-      error: "Something went wrong. Please try again.",
-      signIn: "Sign In",
-      signOut: "Sign Out",
-      language: "Language",
-      theme: "Theme",
-      light: "Light",
-      dark: "Dark",
-      share: "Share",
-      newChat: "New Chat",
-      sendMessage: "Send Message",
-      aiDisclaimer: "AI-generated feedback may be inaccurate. Only use it as a guide.",
-      back: "Back",
-      home: "Home",
-      next: "Next",
-      confirm: "Confirm",
-      or: "or",
-    },
-    chat: {
-      howCanIHelp: "How can I help with your IELTS today?",
-      howCanIHelpSubtitle: "Click on the Speaking or Writing card to start practicing, or ask any question by sending a message",
-      writing: "Writing",
-      speaking: "Speaking",
-      writingDescription: "Take a timed test or submit an existing essay for detailed feedback.",
-      speakingDescription: "Practice with an AI examiner that asks questions and gives real-time feedback.",
-      noMessages: "No messages yet",
-      typeMessage: "Send a message...",
-      linkCopied: "Link copied to clipboard!",
-      collapseSidebar: "Collapse sidebar",
-      toggleSidebar: "Toggle sidebar",
-      expandSidebar: "Expand sidebar",
-      deleteConversation: "Delete Conversation",
-      deleteConfirmation: "Are you sure you want to delete this conversation? This action cannot be undone.",
-      untitledConversation: "Untitled Conversation",
-      renameConversation: "Rename Conversation",
-      searchingKnowledge: "Searching knowledge base",
+      language: "语言",
+      newEssay: "新建作文",
+      retry: "重试",
+      history: "历史记录",
+      home: "返回首页",
     },
     writing: {
-      startWriting: "Start Writing",
-      submitExistingEssay: "Submit Existing Essay",
+      appSubtitle: "IELTS 写作智能批改",
+      noAccount: "匿名使用 · 无需账号",
+      instantFeedback: "即时 AI 批改",
+      heroTitleStart: "获得清晰、",
+      heroTitleAccent: "可执行的雅思报告。",
+      heroDescription: "粘贴任何 Task 1 或 Task 2 题目和作文。本次评估结束后会保存到本机历史文件，Examinai 不使用账号或云端数据库保存你的内容。",
+      featureScores: "按四项雅思评分标准给出分数",
+      featureCorrections: "在原文中按颜色标示批改内容",
+      featureVocabulary: "提供近义词与话题表达建议",
+      startAssessment: "开始批改",
+      noHistory: "无需登录 · 不使用线上历史记录",
+      questionBank: "剑雅 Academic 真题库",
+      questionBankDescription: "选择册数和 Test 后自动回填题目；上方 Task 1 / Task 2 决定载入的题型，Task 1 会一并载入图表。",
+      book: "剑雅册数",
+      test: "套题",
+      useQuestion: "使用此题目",
+      loadingQuestion: "正在载入题目…",
+      bankUnavailable: "本地题库尚未导入。",
+      source: "题库来源",
+      manualEditHint: "题目载入后仍可在下方自由修改。",
+      task1: "Task 1 小作文",
+      task2: "Task 2 大作文",
+      question: "作文题目",
+      questionPlaceholder: "在此粘贴雅思作文题目…",
+      chart: "图表或示意图",
+      optional: "（选填）",
+      remove: "移除",
+      uploadImage: "上传图表图片",
+      uploadedChart: "已上传图表",
+      yourEssay: "你的作文",
+      essayPlaceholder: "在此粘贴或输入你的英文作文…",
+      wordCount: "词数",
+      assess: "开始智能批改",
+      privacyNotice: "作文会发送至模型服务生成反馈；评估结果仅保存到当前项目的本机历史文件夹。",
+      questionText: "题目",
+      taskChart: "Task 1 图表",
+      localChartFacts: "已匹配本地核验图表数据；批改时将跳过识图。",
+      visionChartFallback: "该剑雅题目暂无本地核验图表数据；有图片时会调用图表识别。",
+      settings: "API 设置",
+      settingsTitle: "评分服务设置",
+      settingsDescription: "为当前浏览器配置 OpenAI 兼容的评分与识图服务。留空时使用部署服务器的默认配置。",
+      settingsClose: "关闭设置",
+      settingsScoring: "作文评分 API",
+      settingsScoringDescription: "用于四项评分、批改、近义词和话题表达。",
+      settingsVision: "图表识别 API",
+      settingsVisionDescription: "仅用于自定义或尚无本地事实数据的 Task 1 图表。",
+      settingsApiURL: "API 地址",
+      settingsApiURLPlaceholder: "https://api.example.com/v1",
+      settingsApiKey: "API 密钥",
+      settingsApiKeyPlaceholder: "留空则使用服务器默认密钥",
+      settingsModel: "模型",
+      settingsModelPlaceholder: "输入模型 ID",
+      settingsSelectModel: "选择模型",
+      settingsFetchModels: "获取模型",
+      settingsNeedConnection: "请先填写 API 地址和 API 密钥，再获取模型列表。",
+      settingsNoModels: "该 API 没有返回可用模型。你仍可手动填写模型 ID。",
+      settingsModelsError: "无法获取模型列表，请检查 API 地址和密钥。",
+      settingsSaveError: "无法保存本浏览器设置。",
+      settingsLocalOnly: "密钥仅保存在当前浏览器，并只随你的评分请求发送；不会显示、保存或同步到服务器。",
+      settingsReset: "恢复服务器默认",
+      settingsSave: "保存设置",
+      historyTitle: "批改历史",
+      historyDescription: "在当前设备上查看已保存的作文与评分报告。",
+      noHistoryRecords: "还没有本地批改记录。完成一次批改后会自动显示在这里。",
+      historyLocalOnly: "仅保存在当前项目的本机文件夹，不会同步到云端。",
+      historyOpenReport: "查看报告",
+      historyPartial: "部分报告",
+      historyComplete: "完整报告",
+      historyLoadError: "历史记录暂时无法读取，请稍后重试。",
+      historyDelete: "删除记录",
+      historyDeleteConfirm: "确定删除这条本地评分记录吗？此操作无法撤销。",
+      historyDeleteError: "删除记录失败，请稍后重试。",
+    },
+    feedback: {
+      taskResponse: "任务回应",
+      taskAchievement: "任务完成度",
+      coherenceCohesion: "连贯与衔接",
+      lexicalResource: "词汇资源",
+      grammaticalRange: "语法多样性与准确性",
+      strengths: "亮点",
+      weaknesses: "提升方向",
+      correction: "原句批改",
+      overview: "评分与综合评价",
+      original: "考生原文",
+      waitingForFeedback: "正在生成反馈…",
+      overall: "综合分数",
+      bandScore: "雅思参考分数",
+      assessmentFailed: "批改失败",
+      assessmentPartialError: "部分反馈暂时未能生成。",
+      synonyms: "近义词",
+      topicPhrases: "相关话题",
+      severeError: "严重错误或语法问题",
+      suggestion: "表达优化建议",
+      highlight: "亮点句子",
+      noMappedFeedback: "带有原文定位的反馈会显示在这里。",
+    },
+  },
+  en: {
+    common: {
+      language: "Language",
+      newEssay: "New essay",
+      retry: "Retry",
+      history: "History",
+      home: "Home",
+    },
+    writing: {
+      appSubtitle: "IELTS Writing Assessment",
+      noAccount: "Anonymous · no account needed",
+      instantFeedback: "Instant AI feedback",
+      heroTitleStart: "Get a clear,",
+      heroTitleAccent: "actionable IELTS report.",
+      heroDescription: "Paste any Task 1 or Task 2 prompt and your essay. Each assessment is saved only to the local history folder in this project, with no account or cloud database.",
+      featureScores: "Band score across all four IELTS criteria",
+      featureCorrections: "Colour-coded corrections in your original essay",
+      featureVocabulary: "Contextual synonyms and topic-language guidance",
+      startAssessment: "Start an assessment",
+      noHistory: "No sign-in · no online history",
+      questionBank: "Cambridge Academic question bank",
+      questionBankDescription: "Choose a book and test to fill the prompt automatically. The Task 1 / Task 2 control above determines the question type; Task 1 also loads its chart.",
+      book: "Book",
+      test: "Test",
+      useQuestion: "Use this question",
+      loadingQuestion: "Loading question…",
+      bankUnavailable: "The local question bank has not been imported yet.",
+      source: "Source",
+      manualEditHint: "You can still freely edit the prompt below.",
       task1: "Task 1",
       task2: "Task 2",
       question: "Question",
-      essay: "Essay",
-      wordCount: "Word Count",
-      submit: "Submit",
-      uploadImage: "Upload Image",
-      dragDropImage: "Drag and drop an image, or click to upload",
-      timerExpired: "Time's Up!",
-      timerExpiredMessage: "Your time has expired. Your essay has been submitted automatically.",
-      startTest: "Start",
-      questionText: "Question",
-      writeYourEssay: "Write your essay here...",
-      pasteYourEssay: "Paste your essay here...",
-      minutes: "minutes",
-      selectTask: "Select Task Type",
-      task1Description: "Describe visual information (graph, chart, table, map, or diagram)",
-      task2Description: "Respond to a point of view, argument, or problem",
-      backConfirmation: "Your progress will be lost. Are you sure you want to go back?",
-      enterQuestion: "Enter the essay question...",
+      questionPlaceholder: "Paste the IELTS question here…",
+      chart: "Chart or diagram",
+      optional: "(optional)",
+      remove: "Remove",
+      uploadImage: "Upload chart image",
       uploadedChart: "Uploaded chart",
-      taskChart: "Task chart",
-    },
-    speaking: {
-      part1: "Part 1",
-      part2: "Part 2",
-      part3: "Part 3",
-      startSpeaking: "Start",
-      showText: "Show Text",
-      recording: "Recording...",
-      speakingFeedback: "Feedback",
-      tapToSpeak: "Tap to speak",
-      autoplay: "Autoplay audio",
-      hideText: "Hide Text",
-      preparingQuestion: "Preparing question...",
-      part1Description: "Answer questions about yourself",
-      part2Description: "Given a topic card, prepare for 1 minute, then speak for 1-2 minutes",
-      part3Description: "Discuss abstract issues/ideas related to Part 2's topic",
+      yourEssay: "Your essay",
+      essayPlaceholder: "Paste or write your essay here…",
+      wordCount: "Words",
+      assess: "Assess my writing",
+      privacyNotice: "Your essay is sent to model providers to generate feedback. The assessment is saved only to this project's local history folder.",
+      questionText: "Question",
+      taskChart: "Task 1 chart",
+      localChartFacts: "Verified local chart facts matched; vision will be skipped for assessment.",
+      visionChartFallback: "This Cambridge question has no verified local chart facts yet; chart vision will be used when an image is available.",
+      settings: "API settings",
+      settingsTitle: "Assessment service settings",
+      settingsDescription: "Configure OpenAI-compatible scoring and vision services for this browser. Leave fields empty to use the deployed server defaults.",
+      settingsClose: "Close settings",
+      settingsScoring: "Writing assessment API",
+      settingsScoringDescription: "Used for band scores, corrections, synonyms and topic language.",
+      settingsVision: "Chart vision API",
+      settingsVisionDescription: "Used only for custom Task 1 charts or questions without local verified facts.",
+      settingsApiURL: "API URL",
+      settingsApiURLPlaceholder: "https://api.example.com/v1",
+      settingsApiKey: "API key",
+      settingsApiKeyPlaceholder: "Leave blank to use the server default key",
+      settingsModel: "Model",
+      settingsModelPlaceholder: "Enter a model ID",
+      settingsSelectModel: "Select a model",
+      settingsFetchModels: "Get models",
+      settingsNeedConnection: "Enter an API URL and API key before requesting the model list.",
+      settingsNoModels: "The API returned no models. You can still enter a model ID manually.",
+      settingsModelsError: "Unable to fetch models. Check the API URL and key.",
+      settingsSaveError: "This browser could not save the settings.",
+      settingsLocalOnly: "Keys are stored only in this browser and sent only with your assessment request; they are never displayed, saved or synced by the server.",
+      settingsReset: "Use server defaults",
+      settingsSave: "Save settings",
+      historyTitle: "Assessment history",
+      historyDescription: "Review essays and assessment reports saved on this device.",
+      noHistoryRecords: "No local assessments yet. Completed assessments will appear here.",
+      historyLocalOnly: "Saved only in this project's local folder and never synced to the cloud.",
+      historyOpenReport: "Open report",
+      historyPartial: "Partial report",
+      historyComplete: "Complete report",
+      historyLoadError: "History could not be loaded. Please try again.",
+      historyDelete: "Delete record",
+      historyDeleteConfirm: "Delete this local assessment record? This action cannot be undone.",
+      historyDeleteError: "The record could not be deleted. Please try again.",
     },
     feedback: {
       taskResponse: "Task Response",
+      taskAchievement: "Task Achievement",
       coherenceCohesion: "Coherence & Cohesion",
       lexicalResource: "Lexical Resource",
       grammaticalRange: "Grammatical Range & Accuracy",
       strengths: "Strengths",
       weaknesses: "Areas for Improvement",
-      noWeaknesses: "None. Well done!",
       correction: "Correction",
-      correctedEssay: "Corrected Essay",
-      expandIdeas: "Expand Your Ideas",
-      alternativeApproach: "Alternative Approach",
-      alternativeDirection: "Direction",
-      alternativeEssay: "Alternative Essay",
-      improvedVersion: "Improved Version",
-      vocabularyExplanations: "Vocabulary",
-      bandScore: "Band Score",
-      keyChanges: "Key Changes",
-      overview: "Overview",
-      taskAchievement: "Task Achievement",
-      viewSubmission: "View Submission",
-      viewFeedback: "View Feedback",
-      original: "Original",
-      corrected: "Corrected",
-      waitingForFeedback: "Waiting for feedback...",
-      overall: "Overall",
-      assessmentFailed: "Assessment Failed",
+      overview: "Scoring & Overview",
+      original: "Original essay",
+      waitingForFeedback: "Generating feedback…",
+      overall: "Overall score",
+      bandScore: "IELTS reference band",
+      assessmentFailed: "Assessment failed",
       assessmentPartialError: "Some feedback could not be generated.",
-      retry: "Retry",
-      viewBandDescriptors: "View Band Descriptors",
-      bandDescriptors: "Band Descriptors",
       synonyms: "Synonyms",
-      topicPhrases: "Topic Phrases",
-      report: "Writing Report",
+      topicPhrases: "Topic phrases",
       severeError: "Serious error or grammar issue",
       suggestion: "Expression improvement",
       highlight: "Strength",
-      noMappedFeedback: "Mapped feedback will appear for newly generated assessments.",
-    },
-    onboarding: {
-      chooseLanguage: "Choose Your Language",
-      languageRecommendation: "We recommend using English for the best results.",
-      continueWithGoogle: "Continue with Google",
-      continueWithoutAccount: "Continue without an account",
-      signInBenefits: "Sign in to save your progress, track your scores, and access your practice history across devices.",
-      welcome: "Welcome to Examinai",
-      recommended: "Recommended",
-    },
-  },
-  vi: {
-    common: {
-      appName: "Examinai",
-      cancel: "Hủy",
-      submit: "Gửi",
-      understood: "Đã hiểu",
-      close: "Đóng",
-      error: "Đã xảy ra lỗi. Vui lòng thử lại.",
-      signIn: "Đăng nhập",
-      signOut: "Đăng xuất",
-      language: "Ngôn ngữ",
-      theme: "Giao diện",
-      light: "Sáng",
-      dark: "Tối",
-      share: "Chia sẻ",
-      newChat: "Trò chuyện mới",
-      sendMessage: "Gửi tin nhắn",
-      aiDisclaimer: "Phản hồi từ AI mang tính chất tham khảo và có thể không chính xác.",
-      back: "Quay lại",
-      home: "Trang chủ",
-      next: "Tiếp theo",
-      confirm: "Xác nhận",
-      or: "hoặc",
-    },
-    chat: {
-      howCanIHelp: "Mình có thể giúp gì cho bạn về IELTS?",
-      howCanIHelpSubtitle: "Chọn Nói hoặc Viết để bắt đầu luyện tập, hoặc nhắn tin để hỏi mình bất cứ điều gì nhé",
-      writing: "Viết",
-      speaking: "Nói",
-      writingDescription: "Làm bài thi thử hoặc nộp bài viết có sẵn để nhận phản hồi chi tiết.",
-      speakingDescription: "Luyện tập với giám khảo AI, trả lời và nhận phản hồi ngay lập tức.",
-      noMessages: "Chưa có tin nhắn",
-      typeMessage: "Gửi tin nhắn...",
-      linkCopied: "Đã sao chép liên kết!",
-      collapseSidebar: "Thu gọn thanh bên",
-      toggleSidebar: "Mở/đóng thanh bên",
-      expandSidebar: "Mở rộng thanh bên",
-      deleteConversation: "Xóa cuộc trò chuyện",
-      deleteConfirmation: "Bạn có chắc muốn xóa cuộc trò chuyện này? Sau khi xóa sẽ không thể khôi phục lại.",
-      untitledConversation: "Chưa đặt tên",
-      renameConversation: "Đổi tên cuộc trò chuyện",
-      searchingKnowledge: "Đang tìm kiếm tài liệu",
-    },
-    writing: {
-      startWriting: "Bắt đầu viết",
-      submitExistingEssay: "Gửi bài viết có sẵn",
-      task1: "Task 1",
-      task2: "Task 2",
-      question: "Câu hỏi",
-      essay: "Bài viết",
-      wordCount: "Số từ",
-      submit: "Nộp bài",
-      uploadImage: "Tải ảnh lên",
-      dragDropImage: "Kéo thả ảnh, hoặc nhấn để tải lên",
-      timerExpired: "Hết giờ!",
-      timerExpiredMessage: "Thời gian đã hết. Bài viết của bạn đã được nộp tự động.",
-      startTest: "Bắt đầu",
-      questionText: "Câu hỏi",
-      writeYourEssay: "Viết bài ở đây...",
-      pasteYourEssay: "Dán bài viết ở đây...",
-      minutes: "phút",
-      selectTask: "Chọn task",
-      task1Description: "Mô tả thông tin trực quan (biểu đồ, bảng, bản đồ hoặc sơ đồ)",
-      task2Description: "Phản hồi quan điểm, lập luận hoặc vấn đề",
-      backConfirmation: "Tiến trình sẽ bị mất. Bạn có chắc muốn quay lại?",
-      enterQuestion: "Nhập câu hỏi bài viết...",
-      uploadedChart: "Biểu đồ đã tải lên",
-      taskChart: "Biểu đồ bài thi",
-    },
-    speaking: {
-      part1: "Part 1",
-      part2: "Part 2",
-      part3: "Part 3",
-      startSpeaking: "Bắt đầu",
-      showText: "Xem chữ",
-      recording: "Đang ghi âm...",
-      speakingFeedback: "Nhận xét",
-      tapToSpeak: "Nhấn để nói",
-      autoplay: "Tự động phát âm thanh",
-      hideText: "Ẩn chữ",
-      preparingQuestion: "Đang chuẩn bị câu hỏi...",
-      part1Description: "Trả lời câu hỏi về bản thân",
-      part2Description: "Nhận chủ đề, chuẩn bị 1 phút, sau đó nói 1-2 phút",
-      part3Description: "Thảo luận vấn đề trừu tượng liên quan đến chủ đề Part 2",
-    },
-    feedback: {
-      taskResponse: "Đáp ứng yêu cầu",
-      coherenceCohesion: "Độ mạch lạc",
-      lexicalResource: "Từ vựng",
-      grammaticalRange: "Ngữ pháp",
-      strengths: "Điểm mạnh",
-      weaknesses: "Cần cải thiện",
-      noWeaknesses: "Không có. Bạn làm tốt lắm!",
-      correction: "Chỉnh sửa",
-      correctedEssay: "Bài viết đã sửa",
-      expandIdeas: "Phát triển ý tưởng",
-      alternativeApproach: "Cách tiếp cận khác",
-      alternativeDirection: "Hướng đi",
-      alternativeEssay: "Bài viết thay thế",
-      improvedVersion: "Bản cải thiện",
-      vocabularyExplanations: "Từ vựng",
-      bandScore: "Điểm",
-      keyChanges: "Thay đổi chính",
-      overview: "Tổng quan",
-      taskAchievement: "Mức độ hoàn thành",
-      viewSubmission: "Xem bài viết",
-      viewFeedback: "Xem nhận xét",
-      original: "Bài gốc",
-      corrected: "Đã sửa",
-      waitingForFeedback: "Đang chờ nhận xét...",
-      overall: "Tổng",
-      assessmentFailed: "Chấm bài thất bại",
-      assessmentPartialError: "Một số nhận xét không thể tạo được.",
-      retry: "Thử lại",
-      viewBandDescriptors: "Xem tiêu chí chấm điểm",
-      bandDescriptors: "Tiêu chí chấm điểm",
-      synonyms: "Từ đồng nghĩa",
-      topicPhrases: "Cụm từ theo chủ đề",
-      report: "Báo cáo viết",
-      severeError: "Lỗi nghiêm trọng hoặc ngữ pháp",
-      suggestion: "Cải thiện cách diễn đạt",
-      highlight: "Điểm mạnh",
-      noMappedFeedback: "Phản hồi có liên kết với bài gốc sẽ xuất hiện ở các bài chấm mới.",
-    },
-    onboarding: {
-      chooseLanguage: "Chọn ngôn ngữ",
-      languageRecommendation: "Nên dùng tiếng Anh để có kết quả tốt nhất.",
-      continueWithGoogle: "Tiếp tục với Google",
-      continueWithoutAccount: "Tiếp tục không cần tài khoản",
-      signInBenefits: "Đăng nhập để lưu tiến trình, theo dõi điểm số và xem lại lịch sử luyện tập trên mọi thiết bị.",
-      welcome: "Chào mừng đến với Examinai",
-      recommended: "Đề xuất",
+      noMappedFeedback: "Feedback linked to the original essay will appear here.",
     },
   },
 };

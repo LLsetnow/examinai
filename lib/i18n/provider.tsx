@@ -20,9 +20,9 @@ const I18nContext = createContext<I18nContextType | null>(null);
 const STORAGE_KEY = "examinai-language";
 
 function getInitialLanguage(): Language {
-  if (typeof window === "undefined") return "en";
+  if (typeof window === "undefined") return "zh";
   const saved = localStorage.getItem(STORAGE_KEY);
-  return saved === "vi" ? "vi" : "en";
+  return saved === "en" ? "en" : "zh";
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {

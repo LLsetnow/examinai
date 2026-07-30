@@ -1,38 +1,39 @@
 # Examinai
 
-AI-powered IELTS practice platform with writing assessment, speaking practice, and an IELTS knowledge assistant.
+Anonymous IELTS Writing assessment for Task 1 and Task 2.
 
-## Features
+Paste a question and essay, optionally add a Task 1 chart, and receive a band-score report with colour-coded corrections, contextual synonym suggestions, and topic-language guidance.
 
-- **Writing Practice** — Timed IELTS Writing tests (Task 1 & 2) with multi-expert AI feedback covering task response, coherence, lexical resource, and grammar. Includes corrected and improved essays.
-- **Speaking Practice** — Live conversation with an AI examiner simulating IELTS Speaking Parts 1, 2, and 3 with real-time speech-to-text and text-to-speech.
-- **Knowledge Assistant** — Chat with an AI that can search a curated IELTS knowledge base covering rules, scoring, tips, and exam format.
+## Privacy and scope
 
-## Tech Stack
+- No account, login, user profile, or history
+- No database, Supabase, Drizzle, or cloud essay storage
+- Each completed assessment is saved locally as JSON in `data/assessment-history/` (Git ignored)
 
-- **Framework:** Next.js 16 (App Router), React 19, TypeScript
-- **AI:** Vercel AI SDK v6, Fireworks AI (minimax, qwen3-vl, llama-70b), Deepgram TTS
-- **Database:** Supabase (PostgreSQL, Auth, Storage), Drizzle ORM
-- **UI:** Tailwind CSS 4, shadcn/ui, base-ui, Lottie animations
+## Setup
 
-## Getting Started
+Create `.env` (or `.env.local`):
 
-### Environment Variables
-
-Create `.env.local`:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SECRET_KEY=
-DATABASE_URL=
-FIREWORKS_AI_API_KEY=
-DEEPGRAM_API_KEY=
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key
+ZHIPUAI_API_KEY=your_zhipuai_api_key
 ```
 
-### Local Development
+DeepSeek produces all writing feedback. Zhipu GLM reads a Task 1 chart only when an image is attached.
+
+Then run:
 
 ```bash
 pnpm install
 pnpm dev
 ```
+
+## Local Cambridge question bank
+
+The selector supports Cambridge IELTS Academic 10–21 after importing the local question bank:
+
+```bash
+node tools/import-cambridge-questions.mjs
+```
+
+This writes the prompts and Task 1 images to `data/cambridge-questions/`, which is ignored by Git. The import records its source URL in the generated index file.

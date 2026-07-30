@@ -1,0 +1,21 @@
+[Unit]
+Description=Examinai IELTS writing assessment
+After=network.target
+
+[Service]
+Type=simple
+User=examinai
+Group=examinai
+WorkingDirectory=/var/examinai
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+EnvironmentFile=-/var/examinai/.env
+ExecStart=/usr/bin/npm run start -- -H 0.0.0.0 -p 3004
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

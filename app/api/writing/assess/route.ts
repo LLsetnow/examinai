@@ -1,25 +1,125 @@
-import { generateText, streamText, Output } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
-import { chatModel, visionModel, namingModel } from "@/lib/ai/models";
+import { chatModel, zhipuVisionConfig } from "@/lib/ai/models";
+import { formatChartFactsForAssessment, getCambridgeChartFacts } from "@/lib/question-bank/chart-facts";
+import { resolveCambridgeQuestion } from "@/lib/question-bank/cambridge";
+import { saveAssessmentHistory } from "@/lib/storage/assessment-history";
+import type { AiProviderSettings, CambridgeQuestionSource } from "@/lib/types";
 import {
   WRITING_EXPERT_1_PROMPT,
   WRITING_EXPERT_2_PROMPT,
   WRITING_EXPERT_3_CORRECTION_PROMPT,
-  WRITING_EXPERT_3_FEEDBACK_PROMPT,
+  WRITING_EXPERT_3_ANNOTATION_PROMPT,
+  WRITING_EXPERT_3_SCORE_PROMPT,
   WRITING_EXPERT_4_TASK1_PROMPT,
   WRITING_EXPERT_4_TASK2_PROMPT,
-  CONVERSATION_NAMING_PROMPT,
 } from "@/lib/ai/prompts";
-import {
-  createConversation,
-  addMessage,
-  getMessages,
-  upsertProfile,
-  updateMessageContent,
-  updateConversationTitle,
-} from "@/lib/db/queries";
 
 export const maxDuration = 120;
+
+type FeedbackLanguage = "zh" | "en";
+
+function parseCambridgeQuestionSource(value: unknown): CambridgeQuestionSource | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const source = value as Record<string, unknown>;
+  if (
+    source.kind !== "cambridge"
+    || !Number.isInteger(source.book)
+    || !Number.isInteger(source.test)
+    || (source.taskNumber !== "1" && source.taskNumber !== "2")
+  ) {
+    return undefined;
+  }
+
+  return {
+    kind: "cambridge",
+    book: source.book as number,
+    test: source.test as number,
+    taskNumber: source.taskNumber,
+  };
+}
+
+function parseProviderSettings(value: unknown): AiProviderSettings | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Record<string, unknown>;
+
+  function parseProvider(provider: unknown) {
+    if (!provider || typeof provider !== "object") return undefined;
+    const values = provider as Record<string, unknown>;
+    const baseURL = typeof values.baseURL === "string" ? values.baseURL.trim() : undefined;
+    const apiKey = typeof values.apiKey === "string" ? values.apiKey.trim() : undefined;
+    const model = typeof values.model === "string" ? values.model.trim() : undefined;
+    return baseURL || apiKey || model ? { baseURL, apiKey, model } : undefined;
+  }
+
+  const scoring = parseProvider(candidate.scoring);
+  const vision = parseProvider(candidate.vision);
+  return scoring || vision ? { scoring, vision } : undefined;
+}
+
+function localizePrompt(prompt: string, language: FeedbackLanguage) {
+  const languageInstruction = language === "zh"
+    ? "Write all feedback explanations, summaries, labels, definitions, and usage notes in Simplified Chinese. Keep the JSON keys, enum values, original excerpts, corrected essays, improved essays, and suggested English words or phrases in English."
+    : "Write all feedback explanations, summaries, labels, definitions, and usage notes in English. Keep the JSON keys and enum values exactly as specified.";
+
+  return `${prompt}\n\nOutput language rule:\n- ${languageInstruction}`;
+}
+
+function zhipuImageInput(imageUrl: string): string {
+  if (imageUrl.startsWith("data:")) {
+    const match = imageUrl.match(/^data:image\/(?:png|jpe?g|webp);base64,([a-z0-9+/=\s]+)$/i);
+    if (!match) throw new Error("Unsupported chart image data.");
+    // GLM-4V expects a bare Base64 payload for local images, not a data URL.
+    return match[1].replace(/\s/g, "");
+  }
+
+  const parsedUrl = new URL(imageUrl);
+  if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+    throw new Error("Chart images must use an HTTP(S) URL or Base64 data.");
+  }
+  return parsedUrl.toString();
+}
+
+async function analyseTask1Chart(imageUrl: string, providerSettings?: AiProviderSettings): Promise<string> {
+  const { apiKey, baseURL, modelId } = zhipuVisionConfig(providerSettings);
+  const response = await fetch(`${baseURL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Extract factual notes for an IELTS Task 1 assessor. First transcribe every clearly readable data point by series and year. Then identify title, units, main trends, crossings, extremes, and projections. Explicitly state any rise-then-fall or fall-then-rise pattern; never call a series continuously rising or falling if it changes direction. Do not grade the essay and do not invent unreadable values. Write concise notes in English." },
+            { type: "image_url", image_url: { url: zhipuImageInput(imageUrl) } },
+          ],
+        },
+      ],
+      max_tokens: 1800,
+      temperature: 0,
+    }),
+  });
+
+  const payload = await response.json() as {
+    choices?: Array<{ message?: { content?: string; reasoning_content?: string } }>;
+    error?: { message?: string };
+  };
+  if (!response.ok) {
+    throw new Error(payload.error?.message || `Zhipu returned HTTP ${response.status}.`);
+  }
+
+  const message = payload.choices?.[0]?.message;
+  // Some GLM-4.6V responses put the useful vision analysis solely in the
+  // reasoning field. It is still factual model output suitable for the
+  // downstream text assessor when the final content field is empty.
+  const text = (message?.content || message?.reasoning_content)?.trim();
+  if (!text) throw new Error("Zhipu returned an empty chart analysis.");
+  return text;
+}
 
 // --- Zod schemas for structured output ---
 
@@ -29,6 +129,8 @@ const overviewSchema = z.object({
   weaknesses: z.array(z.string()),
 });
 
+const bandScoreSchema = z.number().int().min(0).max(9);
+
 const scoringSchema = z.object({
   taskResponseHighLevel: z.string(),
   taskResponseStrengths: z.array(z.string()),
@@ -36,8 +138,8 @@ const scoringSchema = z.object({
   coherenceHighLevel: z.string(),
   coherenceStrengths: z.array(z.string()),
   coherenceWeaknesses: z.array(z.string()),
-  taskResponseScore: z.number(),
-  coherenceScore: z.number(),
+  taskResponseScore: bandScoreSchema,
+  coherenceScore: bandScoreSchema,
 });
 
 const languageCorrectionSchema = z.object({
@@ -62,7 +164,7 @@ const topicPhraseSchema = z.object({
   explanation: z.string(),
 });
 
-const languageFeedbackSchema = z.object({
+const languageAssessmentSchema = z.object({
   keyChanges: z.array(z.string()),
   lexicalResourceHighLevel: z.string(),
   lexicalResourceStrengths: z.array(z.string()),
@@ -70,10 +172,13 @@ const languageFeedbackSchema = z.object({
   grammaticalRangeHighLevel: z.string(),
   grammaticalRangeStrengths: z.array(z.string()),
   grammaticalRangeWeaknesses: z.array(z.string()),
+  lexicalResourceScore: bandScoreSchema,
+  grammaticalRangeScore: bandScoreSchema,
+});
+
+const languageAnnotationSchema = z.object({
   essayHighlights: z.array(essayHighlightSchema),
   synonymSuggestions: z.array(synonymSuggestionSchema),
-  lexicalResourceScore: z.number(),
-  grammaticalRangeScore: z.number(),
 });
 
 const vocabularySchema = z.object({
@@ -117,43 +222,25 @@ function normalizeOverview(raw: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeScoring(raw: any, isFinal = false) {
+function normalizeScoring(raw: any) {
   const taskResponseWeaknesses = ensureArray(raw.taskResponseWeaknesses);
   const coherenceWeaknesses = ensureArray(raw.coherenceWeaknesses);
-  // Auto-9 only on final result: strengths present but no weaknesses means perfect score
-  const taskResponseScore =
-    isFinal && taskResponseWeaknesses.length === 0
-      ? 9
-      : (raw.taskResponseScore ?? null);
-  const coherenceScore =
-    isFinal && coherenceWeaknesses.length === 0
-      ? 9
-      : (raw.coherenceScore ?? null);
   return {
     taskResponseHighLevel: raw.taskResponseHighLevel ?? "",
     taskResponseStrengths: ensureArray(raw.taskResponseStrengths),
     taskResponseWeaknesses,
-    taskResponseScore,
+    taskResponseScore: raw.taskResponseScore ?? null,
     coherenceHighLevel: raw.coherenceHighLevel ?? "",
     coherenceStrengths: ensureArray(raw.coherenceStrengths),
     coherenceWeaknesses,
-    coherenceScore,
+    coherenceScore: raw.coherenceScore ?? null,
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeLanguageAnalysis(raw: any, isFinal = false) {
+function normalizeLanguageAnalysis(raw: any) {
   const lexicalResourceWeaknesses = ensureArray(raw.lexicalResourceWeaknesses);
   const grammaticalRangeWeaknesses = ensureArray(raw.grammaticalRangeWeaknesses);
-  // Auto-9 only on final result: strengths present but no weaknesses means perfect score
-  const lexicalResourceScore =
-    isFinal && lexicalResourceWeaknesses.length === 0
-      ? 9
-      : (raw.lexicalResourceScore ?? null);
-  const grammaticalRangeScore =
-    isFinal && grammaticalRangeWeaknesses.length === 0
-      ? 9
-      : (raw.grammaticalRangeScore ?? null);
   return {
     lexicalResourceHighLevel: raw.lexicalResourceHighLevel ?? "",
     lexicalResourceStrengths: ensureArray(raw.lexicalResourceStrengths),
@@ -167,8 +254,8 @@ function normalizeLanguageAnalysis(raw: any, isFinal = false) {
     synonymSuggestions: Array.isArray(raw.synonymSuggestions)
       ? raw.synonymSuggestions
       : [],
-    lexicalResourceScore,
-    grammaticalRangeScore,
+    lexicalResourceScore: raw.lexicalResourceScore ?? null,
+    grammaticalRangeScore: raw.grammaticalRangeScore ?? null,
   };
 }
 
@@ -195,6 +282,36 @@ function normalizeImprovement(raw: any, taskNumber: string, essay: string) {
     };
   }
   return base;
+}
+
+function uniqueFeedback(items: string[]): string[] {
+  return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+}
+
+function buildScoreAlignedOverview(
+  scoring: ReturnType<typeof normalizeScoring>,
+  language: ReturnType<typeof normalizeLanguageAnalysis>,
+) {
+  return {
+    overview: [
+      scoring.taskResponseHighLevel,
+      scoring.coherenceHighLevel,
+      language.lexicalResourceHighLevel,
+      language.grammaticalRangeHighLevel,
+    ].filter(Boolean).join(" "),
+    strengths: uniqueFeedback([
+      ...scoring.taskResponseStrengths,
+      ...scoring.coherenceStrengths,
+      ...language.lexicalResourceStrengths,
+      ...language.grammaticalRangeStrengths,
+    ]).slice(0, 4),
+    weaknesses: uniqueFeedback([
+      ...scoring.taskResponseWeaknesses,
+      ...scoring.coherenceWeaknesses,
+      ...language.lexicalResourceWeaknesses,
+      ...language.grammaticalRangeWeaknesses,
+    ]).slice(0, 4),
+  };
 }
 
 // --- Sentence-level diff for two-stage Expert 3 pipeline ---
@@ -306,15 +423,90 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-/**
- * Stream an expert's structured output, sending throttled partial updates via SSE.
- * Returns the final normalized result.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function streamExpert<S extends z.ZodType>(config: {
-  model: Parameters<typeof streamText>[0]["model"];
+function parseJsonObject(text: string): unknown {
+  const trimmed = text.trim();
+  const fencedJson = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
+  const candidate = (fencedJson ?? trimmed).trim();
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+
+  if (start === -1 || end <= start) {
+    throw new Error("The model response did not contain a JSON object.");
+  }
+
+  const json = candidate.slice(start, end + 1);
+  try {
+    return JSON.parse(json);
+  } catch {
+    // Models occasionally include literal line breaks inside a JSON string.
+    // Escape only those line breaks, preserving formatting outside strings.
+    let repaired = "";
+    let inString = false;
+    let escaping = false;
+
+    for (const character of json) {
+      if (inString && (character === "\n" || character === "\r")) {
+        if (character === "\n") repaired += "\\n";
+        continue;
+      }
+      repaired += character;
+      if (character === '"' && !escaping) inString = !inString;
+      escaping = character === "\\" && !escaping;
+      if (character !== "\\") escaping = false;
+    }
+
+    try {
+      return JSON.parse(repaired.replace(/,\s*([}\]])/g, "$1"));
+    } catch {
+      throw new Error("The model returned invalid JSON.");
+    }
+  }
+}
+
+async function generateJsonObject<S extends z.ZodType>(config: {
+  model: Parameters<typeof generateText>[0]["model"];
   system: string;
-  messages: NonNullable<Parameters<typeof streamText>[0]["messages"]>;
+  messages: NonNullable<Parameters<typeof generateText>[0]["messages"]>;
+  maxOutputTokens: number;
+  schema: S;
+}): Promise<z.infer<S>> {
+  const system = `${config.system}\n\nReturn exactly one valid JSON object. Do not use Markdown fences or add commentary outside the JSON.`;
+  const { text } = await generateText({
+    model: config.model,
+    system,
+    messages: config.messages,
+    maxOutputTokens: config.maxOutputTokens,
+    temperature: 0,
+    topP: 1,
+  });
+
+  try {
+    return config.schema.parse(parseJsonObject(text));
+  } catch {
+    // Keep the assessment usable when an OpenAI-compatible endpoint replies
+    // with prose despite the JSON-only instruction. A focused repair turn is
+    // more reliable than failing an entire assessment section.
+    const { text: repairedText } = await generateText({
+      model: config.model,
+      system: `${system}\n\nYou are repairing a prior response. Preserve its meaning, but output only a valid JSON object matching the requested fields.`,
+      prompt: `Prior response to repair:\n${text}`,
+      maxOutputTokens: config.maxOutputTokens,
+      temperature: 0,
+      topP: 1,
+    });
+    return config.schema.parse(parseJsonObject(repairedText));
+  }
+}
+
+/**
+ * Run an expert with JSON requested in the prompt and validated server-side.
+ * DeepSeek's current compatible endpoint does not accept OpenAI's JSON-schema
+ * response_format, so the SDK's Output.object mode cannot be used here.
+ */
+async function streamExpert<S extends z.ZodType>(config: {
+  model: Parameters<typeof generateText>[0]["model"];
+  system: string;
+  messages: NonNullable<Parameters<typeof generateText>[0]["messages"]>;
   maxOutputTokens: number;
   schema: S;
   eventName: string;
@@ -322,55 +514,80 @@ async function streamExpert<S extends z.ZodType>(config: {
   normalize: (raw: any, isFinal?: boolean) => any;
   sendEvent: (type: string, data: unknown) => void;
 }) {
-  const { partialOutputStream } = streamText({
+  const raw = await generateJsonObject({
     model: config.model,
     system: config.system,
     messages: config.messages,
     maxOutputTokens: config.maxOutputTokens,
-    temperature: 0,
-    topP: 1,
-    output: Output.object({ schema: config.schema }),
+    schema: config.schema,
   });
 
-  let lastSentTime = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let latest: any = null;
-
-  for await (const partial of partialOutputStream) {
-    latest = partial;
-    const now = Date.now();
-    if (now - lastSentTime >= 300) {
-      config.sendEvent(config.eventName, config.normalize(partial, false));
-      lastSentTime = now;
-    }
-  }
-
-  // Always send the final complete result
-  const finalData = config.normalize(latest, true);
+  const finalData = config.normalize(raw, true);
   config.sendEvent(config.eventName, finalData);
   return finalData;
 }
 
 export async function POST(req: Request) {
-  const { taskNumber, question, essay, imageUrl, wordCount, timeSpent, userId, conversationId: existingConversationId, sections: requestedSections } =
-    await req.json();
+  const {
+    taskNumber,
+    question,
+    essay,
+    imageUrl,
+    wordCount,
+    questionSource,
+    providerSettings,
+    feedbackLanguage: requestedLanguage,
+    sections: requestedSections,
+  } = await req.json();
+  const feedbackLanguage: FeedbackLanguage = requestedLanguage === "en" ? "en" : "zh";
+  const parsedQuestionSource = parseCambridgeQuestionSource(questionSource);
+  const parsedProviderSettings = parseProviderSettings(providerSettings);
 
   // Which sections to run — default to all four
   const sectionsToRun: Set<string> = requestedSections
     ? new Set(requestedSections as string[])
     : new Set(["overview", "scoring", "languageAnalysis", "improvement"]);
 
-  const userMessage = `Task ${taskNumber} Question:\n${question}\n\nStudent's Essay (${wordCount ?? 0} words):\n${essay}`;
+  let chartAnalysis = "";
+  if (taskNumber === "1") {
+    const cambridgeQuestion = await resolveCambridgeQuestion(
+      question,
+      taskNumber,
+      parsedQuestionSource,
+    );
+    const localFacts = cambridgeQuestion
+      ? await getCambridgeChartFacts(cambridgeQuestion.id)
+      : null;
 
-  const model = taskNumber === "1" && imageUrl ? visionModel() : chatModel();
+    if (localFacts) {
+      // A manually verified fact set is more reliable than runtime OCR/vision,
+      // so known Cambridge questions deliberately bypass Zhipu altogether.
+      chartAnalysis = formatChartFactsForAssessment(localFacts);
+    } else if (imageUrl) {
+      try {
+        chartAnalysis = await analyseTask1Chart(imageUrl, parsedProviderSettings);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown chart analysis error";
+        return Response.json(
+          {
+            error: feedbackLanguage === "zh"
+              ? `图表识别失败，请检查智谱 API 配置后重试：${message}`
+              : `Chart analysis failed. Check the Zhipu API configuration and try again: ${message}`,
+          },
+          { status: 502 },
+        );
+      }
+    }
+  }
 
-  const userContent =
-    taskNumber === "1" && imageUrl
-      ? [
-          { type: "text" as const, text: userMessage },
-          { type: "image" as const, image: new URL(imageUrl) },
-        ]
-      : userMessage;
+  const userMessage = [
+    `Task ${taskNumber} Question:\n${question}`,
+    `Student's Essay (${wordCount ?? 0} words):\n${essay}`,
+    chartAnalysis ? `Chart analysis from the uploaded image:\n${chartAnalysis}` : "",
+  ].filter(Boolean).join("\n\n");
+
+  // DeepSeek grades every criterion. Zhipu is used only once above to read a Task 1 image.
+  const model = chatModel(parsedProviderSettings);
 
   const improvementPrompt =
     taskNumber === "1"
@@ -393,9 +610,7 @@ export async function POST(req: Request) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const results: Record<string, any> = {};
       const failedSections: Record<string, string> = {};
-      const messages = [{ role: "user" as const, content: userContent }];
-      const isPartialRetry = requestedSections && requestedSections.length < 4;
-
+      const messages = [{ role: "user" as const, content: userMessage }];
       const promises: Promise<void>[] = [];
 
       if (sectionsToRun.has("overview")) {
@@ -403,7 +618,7 @@ export async function POST(req: Request) {
           withRetry(() =>
             streamExpert({
               model,
-              system: WRITING_EXPERT_1_PROMPT,
+              system: localizePrompt(WRITING_EXPERT_1_PROMPT, feedbackLanguage),
               messages,
               maxOutputTokens: 2000,
               schema: overviewSchema,
@@ -425,7 +640,7 @@ export async function POST(req: Request) {
           withRetry(() =>
             streamExpert({
               model,
-              system: WRITING_EXPERT_2_PROMPT,
+              system: localizePrompt(WRITING_EXPERT_2_PROMPT, feedbackLanguage),
               messages,
               maxOutputTokens: 3000,
               schema: scoringSchema,
@@ -447,23 +662,18 @@ export async function POST(req: Request) {
           // Language analysis: Two-stage pipeline (correction → diff → feedback)
           withRetry(async () => {
             // Stage 1: Generate corrected essay
-            const { partialOutputStream: correctionStream } = streamText({
+            const correction = await generateJsonObject({
               model,
-              system: WRITING_EXPERT_3_CORRECTION_PROMPT,
+              system: localizePrompt(WRITING_EXPERT_3_CORRECTION_PROMPT, feedbackLanguage),
               messages,
               maxOutputTokens: 2000,
-              temperature: 0,
-              topP: 1,
-                      output: Output.object({ schema: languageCorrectionSchema }),
+              schema: languageCorrectionSchema,
             });
-
-            let correctedEssay = "";
-            for await (const partial of correctionStream) {
-              if (partial?.correctedEssay) {
-                correctedEssay = partial.correctedEssay;
-                sendEvent("languageAnalysis", normalizeLanguageAnalysis({ correctedEssay }, false));
-              }
-            }
+            // A few compatible-model retries return an empty field when no
+            // corrections are needed. The original essay is the only safe
+            // fallback because the report must always display a full text.
+            const correctedEssay = correction.correctedEssay.trim() || essay;
+            sendEvent("languageAnalysis", normalizeLanguageAnalysis({ correctedEssay }));
 
             // Stage 2: Compute diffs using code
             const diffs = computeSentenceDiffs(essay, correctedEssay);
@@ -477,34 +687,37 @@ export async function POST(req: Request) {
               },
             ];
 
-            const { partialOutputStream } = streamText({
-              model: chatModel(),
-              system: WRITING_EXPERT_3_FEEDBACK_PROMPT,
+            const languageAssessment = await generateJsonObject({
+              model,
+              system: localizePrompt(WRITING_EXPERT_3_SCORE_PROMPT, feedbackLanguage),
               messages: feedbackMessages,
-              maxOutputTokens: 3000,
-              temperature: 0,
-              topP: 1,
-                      output: Output.object({ schema: languageFeedbackSchema }),
+              maxOutputTokens: 2400,
+              schema: languageAssessmentSchema,
             });
 
-            let latestFeedback: any = null;
-            let lastSentTime = 0;
-            for await (const partial of partialOutputStream) {
-              latestFeedback = partial;
-              const now = Date.now();
-              if (now - lastSentTime >= 300) {
-                sendEvent(
-                  "languageAnalysis",
-                  normalizeLanguageAnalysis({ correctedEssay, ...partial }, false),
-                );
-                lastSentTime = now;
-              }
+            let annotations: z.infer<typeof languageAnnotationSchema> = {
+              essayHighlights: [],
+              synonymSuggestions: [],
+            };
+            try {
+              annotations = await generateJsonObject({
+                model,
+                system: localizePrompt(WRITING_EXPERT_3_ANNOTATION_PROMPT, feedbackLanguage),
+                messages: feedbackMessages,
+                maxOutputTokens: 1800,
+                schema: languageAnnotationSchema,
+              });
+            } catch (error) {
+              // Inline annotations are optional. Keep reliable rubric scores
+              // even if this cosmetic enrichment cannot be parsed.
+              console.warn("Failed to generate language annotations:", error);
             }
 
             const finalData = normalizeLanguageAnalysis({
               correctedEssay,
-              ...latestFeedback,
-            }, true);
+              ...languageAssessment,
+              ...annotations,
+            });
             sendEvent("languageAnalysis", finalData);
             return finalData;
           }).then((data) => {
@@ -521,7 +734,7 @@ export async function POST(req: Request) {
           withRetry(() =>
             streamExpert({
               model,
-              system: improvementPrompt,
+              system: localizePrompt(improvementPrompt, feedbackLanguage),
               messages,
               maxOutputTokens: 4096,
               schema: improvementSchema,
@@ -540,121 +753,37 @@ export async function POST(req: Request) {
 
       await Promise.all(promises);
 
-      // Save the conversation and messages to the database (only on full assessment, not partial retry)
-      let conversationId: string | null = null;
-      if (isPartialRetry) {
-        conversationId = typeof existingConversationId === "string" ? existingConversationId : null;
+      // The four rubric responses are the source of truth for the final
+      // summary. Rebuild it after all criteria arrive so that it cannot praise
+      // an essay for a feature another rubric has identified as a weakness.
+      if (results.scoring && results.languageAnalysis) {
+        results.overview = buildScoreAlignedOverview(
+          results.scoring,
+          results.languageAnalysis,
+        );
+        delete failedSections.overview;
+        sendEvent("overview", results.overview);
+      }
 
-        if (conversationId) {
-          try {
-            const conversationMessages = await getMessages(conversationId);
-            const feedbackMessage = conversationMessages.find((message) => {
-              if (message.role !== "assistant") return false;
-              try {
-                return JSON.parse(message.content).type === "writing_feedback";
-              } catch {
-                return false;
-              }
-            });
-
-            if (feedbackMessage) {
-              const previousFeedback = JSON.parse(feedbackMessage.content);
-              const nextFailedSections = {
-                ...(previousFeedback.failedSections ?? {}),
-                ...failedSections,
-              };
-
-              for (const section of requestedSections as string[]) {
-                if (results[section]) {
-                  delete nextFailedSections[section];
-                }
-              }
-
-              await updateMessageContent(
-                feedbackMessage.id,
-                JSON.stringify({
-                  ...previousFeedback,
-                  ...results.overview,
-                  ...results.scoring,
-                  ...results.languageAnalysis,
-                  ...results.improvement,
-                  failedSections: nextFailedSections,
-                }),
-              );
-            }
-          } catch (saveError) {
-            console.error("[writing/assess] Failed to update conversation:", saveError);
-          }
-        }
-
-        sendEvent("done", { conversationId });
-      } else {
-        try {
-          if (userId) {
-            await upsertProfile({ id: userId });
-          }
-
-          const conversation = await createConversation({
-            userId: userId || undefined,
-            type: "writing",
-            title: `Writing Task ${taskNumber}`,
-          });
-          conversationId = conversation.id;
-
-          const userMessageContent = JSON.stringify({
-            type: "writing_submission",
+      try {
+        await saveAssessmentHistory({
+          feedbackLanguage,
+          submission: {
             taskNumber,
             question,
             essay,
-            imageUrl: imageUrl || undefined,
-            wordCount: wordCount || 0,
-            timeSpent: timeSpent || undefined,
-          });
-          await addMessage({
-            conversationId: conversation.id,
-            role: "user",
-            content: userMessageContent,
-          });
-
-          const assistantMessageContent = JSON.stringify({
-            type: "writing_feedback",
-            ...results.overview,
-            ...results.scoring,
-            ...results.languageAnalysis,
-            ...results.improvement,
-            failedSections,
-          });
-          await addMessage({
-            conversationId: conversation.id,
-            role: "assistant",
-            content: assistantMessageContent,
-          });
-        } catch (saveError) {
-          console.error("[writing/assess] Failed to save conversation:", saveError);
-        }
-
-        // Auto-name the conversation
-        let title: string | null = null;
-        if (conversationId) {
-          try {
-            const { text } = await generateText({
-              model: namingModel(),
-              system: CONVERSATION_NAMING_PROMPT,
-              prompt: `Writing Task ${taskNumber}: ${question}`,
-              maxOutputTokens: 50,
-            });
-            title = text
-              .trim()
-              .replace(/^["']|["']$/g, "")
-              .slice(0, 100);
-            await updateConversationTitle(conversationId, title);
-          } catch (nameError) {
-            console.error("[writing/assess] Failed to name conversation:", nameError);
-          }
-        }
-
-        sendEvent("done", { conversationId, title });
+          imageUrl,
+          wordCount: wordCount ?? 0,
+          questionSource: parsedQuestionSource,
+          },
+          feedback: results,
+          failedSections,
+        });
+      } catch (error) {
+        console.error("Failed to save local assessment history:", error);
       }
+
+      sendEvent("done", {});
 
       controller.close();
     },
