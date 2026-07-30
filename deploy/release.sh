@@ -7,6 +7,8 @@ cd "$APP_DIRECTORY"
 git fetch --quiet origin main
 git checkout --quiet main
 git pull --ff-only --quiet origin main
-npm ci --omit=dev
-npm run build
+corepack enable
+corepack install
+pnpm install --frozen-lockfile
+pnpm run build
 systemctl restart examinai
