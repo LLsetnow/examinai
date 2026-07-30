@@ -18,4 +18,4 @@ rm -rf .next
 tar -xzf .next-release.tgz
 rm -f .next-release.tgz
 
-systemctl restart examinai
+sudo /usr/bin/systemctl restart examinai

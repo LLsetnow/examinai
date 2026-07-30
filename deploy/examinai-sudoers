@@ -1,0 +1,1 @@
+examinai ALL=(root) NOPASSWD: /usr/bin/systemctl restart examinai
