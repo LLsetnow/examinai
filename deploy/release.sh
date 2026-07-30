@@ -5,8 +5,7 @@ APP_DIRECTORY=/var/examinai
 
 cd "$APP_DIRECTORY"
 git fetch --quiet origin main
-git checkout --quiet main
-git pull --ff-only --quiet origin main
+git reset --hard --quiet origin/main
 corepack enable
 corepack install
 pnpm install --frozen-lockfile
