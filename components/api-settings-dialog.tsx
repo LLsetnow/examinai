@@ -242,10 +242,14 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{t.writing.settingsHistoryFolderDescription}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2.5">
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                    {historyDirectoryName || t.writing.settingsHistoryFolderEmpty}
-                  </span>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <input
+                    readOnly
+                    value={historyDirectoryName}
+                    placeholder={t.writing.settingsHistoryFolderEmpty}
+                    aria-label={t.writing.settingsHistoryFolder}
+                    className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-white px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                  />
                   {historyDirectoryName ? (
                     <Button type="button" variant="ghost" size="sm" onClick={() => void clearHistoryDirectory()}>
                       {t.writing.settingsHistoryFolderClear}
