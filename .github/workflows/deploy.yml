@@ -34,6 +34,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
           tar -czf .next-release.tgz .next
+          git archive --format=tar.gz --output=.source-release.tgz HEAD
 
       - name: Configure SSH
         env:
@@ -51,6 +52,7 @@ jobs:
         run: |
           scp -o ConnectTimeout=20 deploy/release.sh production:/tmp/examinai-release.sh
           ssh -o ConnectTimeout=20 production 'install -m 755 /tmp/examinai-release.sh /var/examinai/deploy/release.sh && rm -f /tmp/examinai-release.sh'
+          scp -o ConnectTimeout=20 .source-release.tgz production:/var/examinai/.source-release.tgz
           scp -o ConnectTimeout=20 .next-release.tgz production:/var/examinai/.next-release.tgz
 
       - name: Release
