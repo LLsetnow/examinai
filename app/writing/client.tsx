@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import RobotIcon from "@/components/icons/logo";
 import { ApiSettingsButton } from "@/components/api-settings-dialog";
+import { IcpFooter } from "@/components/icp-footer";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -640,6 +641,7 @@ export default function WritingPageClient() {
           </div>
         </section>
       </div>
+      <IcpFooter />
     </main>
   );
 }
@@ -818,6 +820,7 @@ function HistoryRecordsPage({
           </>
         )}
       </section>
+      <IcpFooter />
     </main>
   );
 }
