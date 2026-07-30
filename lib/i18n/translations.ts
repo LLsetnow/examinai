@@ -89,6 +89,10 @@ export interface Translations {
     historyDelete: string;
     historyDeleteConfirm: string;
     historyDeleteError: string;
+    historyReadingFolder: string;
+    historyFolderRequired: string;
+    historyFolderPermissionDenied: string;
+    historyFolderUnsupported: string;
   };
   feedback: {
     taskResponse: string;
@@ -188,20 +192,20 @@ export const translations: Record<Language, Translations> = {
       settingsSaveError: "无法保存本浏览器设置。",
       settingsLocalOnly: "密钥仅保存在当前浏览器，并只随你的评分请求发送；不会显示、保存或同步到服务器。",
       settingsHistoryFolder: "本地历史文件夹",
-      settingsHistoryFolderDescription: "选择电脑中的文件夹后，导出的 JSON 批改报告会直接保存到这里。",
+      settingsHistoryFolderDescription: "选择电脑中的文件夹后，历史页会读取其中的 JSON 批改报告；导出的 JSON 也会保存到这里。",
       settingsHistoryFolderEmpty: "未选择文件夹",
       settingsHistoryFolderChoose: "选择文件夹",
       settingsHistoryFolderChange: "更换路径",
       settingsHistoryFolderClear: "清除",
       settingsHistoryFolderUnsupported: "当前浏览器不支持选择本地文件夹；JSON 将使用浏览器下载。",
-      settingsHistoryFolderError: "无法取得该文件夹的写入权限，请重新选择。",
-      settingsHistoryFolderPrivacy: "浏览器不会提供绝对路径，也不能直接打开系统文件夹；文件夹授权仅保存在当前浏览器，可随时清除。",
+      settingsHistoryFolderError: "无法取得该文件夹的读取或写入权限，请重新选择。",
+      settingsHistoryFolderPrivacy: "浏览器不会提供绝对路径；历史页只会读取你明确授权的文件夹，授权仅保存在当前浏览器，可随时清除。",
       settingsReset: "恢复服务器默认",
       settingsSave: "保存设置",
       historyTitle: "批改历史",
-      historyDescription: "在当前设备上查看已保存的作文与评分报告。",
-      noHistoryRecords: "还没有本地批改记录。完成一次批改后会自动显示在这里。",
-      historyLocalOnly: "仅保存在当前项目的本机文件夹，不会同步到云端。",
+      historyDescription: "读取已授权本地文件夹中的作文与评分报告。",
+      noHistoryRecords: "该本地文件夹中还没有可读取的 JSON 批改报告。完成批改后会自动保存到这里。",
+      historyLocalOnly: "仅访问你在当前浏览器中授权的本地文件夹，不会同步到云端。",
       historyOpenReport: "查看报告",
       historyPartial: "部分报告",
       historyComplete: "完整报告",
@@ -209,6 +213,10 @@ export const translations: Record<Language, Translations> = {
       historyDelete: "删除记录",
       historyDeleteConfirm: "确定删除这条本地评分记录吗？此操作无法撤销。",
       historyDeleteError: "删除记录失败，请稍后重试。",
+      historyReadingFolder: "正在读取本地文件夹",
+      historyFolderRequired: "请先在 API 设置中选择本地历史文件夹，然后重试。",
+      historyFolderPermissionDenied: "无法读取该本地文件夹。请在 API 设置中重新选择并授予权限。",
+      historyFolderUnsupported: "当前浏览器不支持读取本地文件夹历史。请使用最新版 Chrome 或 Edge。",
     },
     feedback: {
       taskResponse: "任务回应",
@@ -306,20 +314,20 @@ export const translations: Record<Language, Translations> = {
       settingsSaveError: "This browser could not save the settings.",
       settingsLocalOnly: "Keys are stored only in this browser and sent only with your assessment request; they are never displayed, saved or synced by the server.",
       settingsHistoryFolder: "Local history folder",
-      settingsHistoryFolderDescription: "Choose a folder on this computer. Exported JSON assessment reports will be saved there directly.",
+      settingsHistoryFolderDescription: "Choose a folder on this computer. History reads its JSON assessment reports, and exported reports are saved there directly.",
       settingsHistoryFolderEmpty: "No folder selected",
       settingsHistoryFolderChoose: "Choose folder",
       settingsHistoryFolderChange: "Change folder",
       settingsHistoryFolderClear: "Clear",
       settingsHistoryFolderUnsupported: "This browser cannot select a local folder. JSON reports will be downloaded instead.",
-      settingsHistoryFolderError: "This folder could not be granted write permission. Please choose it again.",
-      settingsHistoryFolderPrivacy: "Browsers do not expose an absolute path or open system folders directly. Permission stays only in this browser and can be cleared at any time.",
+      settingsHistoryFolderError: "This folder could not be granted read or write permission. Please choose it again.",
+      settingsHistoryFolderPrivacy: "Browsers do not expose an absolute path. History reads only the folder you explicitly authorise, and permission stays only in this browser.",
       settingsReset: "Use server defaults",
       settingsSave: "Save settings",
       historyTitle: "Assessment history",
-      historyDescription: "Review essays and assessment reports saved on this device.",
-      noHistoryRecords: "No local assessments yet. Completed assessments will appear here.",
-      historyLocalOnly: "Saved only in this project's local folder and never synced to the cloud.",
+      historyDescription: "Read essays and assessment reports from your authorised local folder.",
+      noHistoryRecords: "No readable JSON assessment reports are in this local folder yet. Completed assessments will be saved here automatically.",
+      historyLocalOnly: "Only reads the local folder authorised in this browser and never syncs it to the cloud.",
       historyOpenReport: "Open report",
       historyPartial: "Partial report",
       historyComplete: "Complete report",
@@ -327,6 +335,10 @@ export const translations: Record<Language, Translations> = {
       historyDelete: "Delete record",
       historyDeleteConfirm: "Delete this local assessment record? This action cannot be undone.",
       historyDeleteError: "The record could not be deleted. Please try again.",
+      historyReadingFolder: "Reading local folder",
+      historyFolderRequired: "Choose a local history folder in API settings, then try again.",
+      historyFolderPermissionDenied: "This local folder cannot be read. Choose it again and grant permission in API settings.",
+      historyFolderUnsupported: "This browser cannot read local folder history. Use the latest Chrome or Edge.",
     },
     feedback: {
       taskResponse: "Task Response",

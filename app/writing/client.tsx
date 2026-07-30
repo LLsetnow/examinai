@@ -21,6 +21,14 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  deleteJsonFromLocalHistoryDirectory,
+  getLocalHistoryDirectoryName,
+  readLocalHistoryDirectory,
+  saveJsonToLocalHistoryDirectory,
+  type BrowserHistoryRecord,
+  type LocalHistoryDirectoryStatus,
+} from "@/lib/browser/local-history-directory";
+import {
   WritingAssessmentReport,
   type AssessmentData,
 } from "@/components/writing/writing-assessment-report";
@@ -28,6 +36,11 @@ import { loadProviderSettings, saveProviderSettings } from "@/lib/browser/provid
 import { useI18n } from "@/lib/i18n/provider";
 import type { Language } from "@/lib/i18n/translations";
 import type { AiProviderSettings, CambridgeQuestionSource, WritingSubmission } from "@/lib/types";
+import {
+  createWritingReportFile,
+  createWritingReportFileName,
+  serializeWritingReport,
+} from "@/lib/writing-report";
 
 type Screen = "form" | "report" | "history";
 
@@ -68,12 +81,6 @@ interface HistoryRecordSummary {
   failedSections: Record<string, string>;
 }
 
-interface HistoryRecordDetail {
-  submission: WritingSubmission;
-  feedback: Partial<Pick<AssessmentData, "overview" | "scoring" | "languageAnalysis" | "improvement">>;
-  failedSections: Record<string, string>;
-}
-
 function createEmptyAssessment(): AssessmentData {
   return {
     overview: null,
@@ -83,6 +90,18 @@ function createEmptyAssessment(): AssessmentData {
     done: false,
     failedSections: {},
   };
+}
+
+function calculateOverallScore(assessment: AssessmentData) {
+  if (!assessment.scoring || !assessment.languageAnalysis) return null;
+  const scores = [
+    assessment.scoring.taskResponseScore,
+    assessment.scoring.coherenceScore,
+    assessment.languageAnalysis.lexicalResourceScore,
+    assessment.languageAnalysis.grammaticalRangeScore,
+  ];
+  if (scores.some((score) => score === null)) return null;
+  return Math.round(((scores as number[]).reduce((sum, score) => sum + score, 0) / 4) * 2) / 2;
 }
 
 export default function WritingPageClient() {
@@ -107,9 +126,13 @@ export default function WritingPageClient() {
   const [historyError, setHistoryError] = useState(false);
   const [historyDeleteError, setHistoryDeleteError] = useState(false);
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
+  const [browserHistoryRecords, setBrowserHistoryRecords] = useState<BrowserHistoryRecord[]>([]);
+  const [historyDirectoryStatus, setHistoryDirectoryStatus] = useState<LocalHistoryDirectoryStatus | null>(null);
+  const [historyDirectoryName, setHistoryDirectoryName] = useState("");
   const [providerSettings, setProviderSettings] = useState<AiProviderSettings | undefined>(loadProviderSettings);
   const controllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const autoSavedSubmissionRef = useRef<WritingSubmission | null>(null);
 
   const wordCount = essay.trim() ? essay.trim().split(/\s+/).length : 0;
   const canAssess = question.trim().length > 0 && essay.trim().length > 0;
@@ -122,6 +145,30 @@ export default function WritingPageClient() {
   useEffect(() => {
     return () => controllerRef.current?.abort();
   }, []);
+
+  useEffect(() => {
+    if (!submission || !assessment.done || autoSavedSubmissionRef.current === submission) return;
+
+    const exportedAt = new Date();
+    const report = createWritingReportFile({
+      submission,
+      overview: assessment.overview,
+      scoring: assessment.scoring,
+      languageAnalysis: assessment.languageAnalysis,
+      improvement: assessment.improvement,
+      overallScore: calculateOverallScore(assessment),
+      feedbackLanguage: language,
+      failedSections: assessment.failedSections,
+      exportedAt,
+    });
+
+    void saveJsonToLocalHistoryDirectory(
+      createWritingReportFileName(submission.taskNumber, exportedAt),
+      serializeWritingReport(report),
+    ).then((status) => {
+      if (status === "saved") autoSavedSubmissionRef.current = submission;
+    });
+  }, [assessment, language, submission]);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,12 +242,32 @@ export default function WritingPageClient() {
     setIsLoadingHistory(true);
     setHistoryError(false);
     setHistoryDeleteError(false);
+    setHistoryDirectoryStatus(null);
 
     try {
-      const response = await fetch("/api/writing/history");
-      if (!response.ok) throw new Error("History is unavailable");
-      const data = await response.json() as { records?: HistoryRecordSummary[] };
-      setHistoryRecords(data.records ?? []);
+      const result = await readLocalHistoryDirectory();
+      setHistoryDirectoryName(getLocalHistoryDirectoryName());
+      if (result.status !== "saved") {
+        setHistoryRecords([]);
+        setBrowserHistoryRecords([]);
+        setHistoryDirectoryStatus(result.status);
+        return;
+      }
+
+      setBrowserHistoryRecords(result.records);
+      setHistoryRecords(result.records.map((record) => ({
+        id: record.id,
+        createdAt: record.createdAt,
+        feedbackLanguage: record.feedbackLanguage,
+        submission: {
+          taskNumber: record.submission.taskNumber,
+          question: record.submission.question,
+          wordCount: record.submission.wordCount,
+          questionSource: record.submission.questionSource,
+        },
+        scores: record.scores,
+        failedSections: record.failedSections,
+      })));
     } catch {
       setHistoryError(true);
     } finally {
@@ -209,24 +276,23 @@ export default function WritingPageClient() {
   }
 
   async function openHistoryRecord(id: string) {
-    try {
-      const response = await fetch(`/api/writing/history?id=${encodeURIComponent(id)}`);
-      if (!response.ok) throw new Error("History record is unavailable");
-      const record = await response.json() as HistoryRecordDetail;
-
-      setSubmission(record.submission);
-      setAssessment({
-        overview: record.feedback.overview ?? null,
-        scoring: record.feedback.scoring ?? null,
-        languageAnalysis: record.feedback.languageAnalysis ?? null,
-        improvement: record.feedback.improvement ?? null,
-        done: true,
-        failedSections: record.failedSections ?? {},
-      });
-      setScreen("report");
-    } catch {
+    const record = browserHistoryRecords.find((entry) => entry.id === id);
+    if (!record) {
       setHistoryError(true);
+      return;
     }
+
+    autoSavedSubmissionRef.current = record.submission;
+    setSubmission(record.submission);
+    setAssessment({
+      overview: record.feedback.overview,
+      scoring: record.feedback.scoring,
+      languageAnalysis: record.feedback.languageAnalysis,
+      improvement: record.feedback.improvement,
+      done: true,
+      failedSections: record.failedSections,
+    });
+    setScreen("report");
   }
 
   async function deleteHistoryRecord(id: string) {
@@ -236,11 +302,12 @@ export default function WritingPageClient() {
     setHistoryDeleteError(false);
 
     try {
-      const response = await fetch(`/api/writing/history?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("History record could not be deleted");
+      const record = browserHistoryRecords.find((entry) => entry.id === id);
+      if (!record || await deleteJsonFromLocalHistoryDirectory(record.fileName) !== "saved") {
+        throw new Error("History record could not be deleted");
+      }
       setHistoryRecords((current) => current.filter((record) => record.id !== id));
+      setBrowserHistoryRecords((current) => current.filter((record) => record.id !== id));
     } catch {
       setHistoryDeleteError(true);
     } finally {
@@ -354,6 +421,7 @@ export default function WritingPageClient() {
 
   function startNewEssay() {
     controllerRef.current?.abort();
+    autoSavedSubmissionRef.current = null;
     setScreen("form");
     setSubmission(null);
     setAssessment(createEmptyAssessment());
@@ -370,6 +438,7 @@ export default function WritingPageClient() {
           onRetry={(sections) => void requestAssessment(submission, sections)}
           providerSettings={providerSettings}
           onProviderSettingsChange={handleProviderSettingsChange}
+          feedbackLanguage={language}
         />
       </div>
     );
@@ -381,6 +450,8 @@ export default function WritingPageClient() {
         records={historyRecords}
         loading={isLoadingHistory}
         error={historyError}
+        directoryStatus={historyDirectoryStatus}
+        directoryName={historyDirectoryName}
         deleteError={historyDeleteError}
         deletingId={deletingHistoryId}
         questionBank={questionBank}
@@ -653,6 +724,8 @@ function HistoryRecordsPage({
   records,
   loading,
   error,
+  directoryStatus,
+  directoryName,
   deleteError,
   deletingId,
   questionBank,
@@ -666,6 +739,8 @@ function HistoryRecordsPage({
   records: HistoryRecordSummary[];
   loading: boolean;
   error: boolean;
+  directoryStatus: LocalHistoryDirectoryStatus | null;
+  directoryName: string;
   deleteError: boolean;
   deletingId: string | null;
   questionBank: QuestionBank | null;
@@ -677,6 +752,13 @@ function HistoryRecordsPage({
   onDelete: (id: string) => void;
 }) {
   const { language, t } = useI18n();
+  const directoryError = directoryStatus === "unavailable"
+    ? t.writing.historyFolderRequired
+    : directoryStatus === "permission-denied"
+      ? t.writing.historyFolderPermissionDenied
+      : directoryStatus === "unsupported"
+        ? t.writing.historyFolderUnsupported
+        : null;
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top_right,_rgba(254,202,202,0.7),transparent_38%),linear-gradient(135deg,#fffafa_0%,#ffffff_55%,#fff7ed_100%)]">
@@ -723,7 +805,9 @@ function HistoryRecordsPage({
             </p>
           </div>
           <p className="max-w-xs text-sm leading-5 text-muted-foreground sm:text-right">
-            {t.writing.historyLocalOnly}
+            {directoryName
+              ? <><span className="block font-medium text-foreground/80">{t.writing.historyReadingFolder}</span>{directoryName}</>
+              : t.writing.historyLocalOnly}
           </p>
         </div>
 
@@ -732,9 +816,9 @@ function HistoryRecordsPage({
             <LoaderCircle className="size-4 animate-spin text-primary" />
             {t.feedback.waitingForFeedback}
           </div>
-        ) : error ? (
+        ) : error || directoryError ? (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50/75 p-5 text-sm text-red-800">
-            <span>{t.writing.historyLoadError}</span>
+            <span>{directoryError ?? t.writing.historyLoadError}</span>
             <Button size="sm" variant="outline" onClick={onReload}>
               {t.common.retry}
             </Button>

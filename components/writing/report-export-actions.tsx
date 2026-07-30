@@ -5,6 +5,11 @@ import { FileDown, FileJson2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { saveJsonToLocalHistoryDirectory } from "@/lib/browser/local-history-directory";
 import { useI18n } from "@/lib/i18n/provider";
+import {
+  createWritingReportFile,
+  createWritingReportFileName,
+  serializeWritingReport,
+} from "@/lib/writing-report";
 import type {
   WritingImprovementFeedback,
   WritingLanguageFeedback,
@@ -20,6 +25,8 @@ interface ReportExportActionsProps {
   languageAnalysis: WritingLanguageFeedback | null;
   improvement: WritingImprovementFeedback | null;
   overallScore: number | null;
+  feedbackLanguage: "zh" | "en";
+  failedSections: Record<string, string>;
 }
 
 function downloadJson(fileName: string, content: string) {
@@ -41,6 +48,8 @@ export function ReportExportActions({
   languageAnalysis,
   improvement,
   overallScore,
+  feedbackLanguage,
+  failedSections,
 }: ReportExportActionsProps) {
   const { t } = useI18n();
   const [exportNotice, setExportNotice] = useState("");
@@ -51,22 +60,18 @@ export function ReportExportActions({
 
   async function exportJson() {
     const exportedAt = new Date();
-    const date = exportedAt.toISOString().slice(0, 10);
-    const fileName = `examinai-ielts-task-${submission.taskNumber}-${date}.json`;
-    const report = {
-      format: "examinai-writing-report/v1",
-      exportedAt: exportedAt.toISOString(),
+    const fileName = createWritingReportFileName(submission.taskNumber, exportedAt);
+    const json = serializeWritingReport(createWritingReportFile({
       submission,
-      scores: {
-        overall: overallScore,
-        taskResponse: scoring?.taskResponseScore ?? null,
-        coherence: scoring?.coherenceScore ?? null,
-        lexicalResource: languageAnalysis?.lexicalResourceScore ?? null,
-        grammaticalRange: languageAnalysis?.grammaticalRangeScore ?? null,
-      },
-      feedback: { overview, scoring, languageAnalysis, improvement },
-    };
-    const json = `${JSON.stringify(report, null, 2)}\n`;
+      overview,
+      scoring,
+      languageAnalysis,
+      improvement,
+      overallScore,
+      feedbackLanguage,
+      failedSections,
+      exportedAt,
+    }));
     const status = await saveJsonToLocalHistoryDirectory(fileName, json);
 
     if (status === "saved") {

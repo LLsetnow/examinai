@@ -41,6 +41,7 @@ interface WritingAssessmentReportProps {
   onRetry?: (sections: string[]) => void;
   providerSettings?: AiProviderSettings;
   onProviderSettingsChange?: (settings: AiProviderSettings | undefined) => void;
+  feedbackLanguage: "zh" | "en";
 }
 
 export function WritingAssessmentReport({
@@ -51,6 +52,7 @@ export function WritingAssessmentReport({
   onRetry,
   providerSettings,
   onProviderSettingsChange,
+  feedbackLanguage,
 }: WritingAssessmentReportProps) {
   const { t } = useI18n();
   const failedSections = Object.keys(assessment.failedSections);
@@ -101,6 +103,8 @@ export function WritingAssessmentReport({
             languageAnalysis={assessment.languageAnalysis}
             improvement={assessment.improvement}
             overallScore={overallScore}
+            feedbackLanguage={feedbackLanguage}
+            failedSections={assessment.failedSections}
           />
           {onHistory && (
             <Button variant="outline" size="sm" onClick={onHistory}>
