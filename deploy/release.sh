@@ -15,5 +15,6 @@ for attempt in 1 2 3; do
 done
 git reset --hard --quiet origin/main
 pnpm install --frozen-lockfile
+pnpm rebuild esbuild sharp unrs-resolver
 pnpm run build
 systemctl restart examinai
