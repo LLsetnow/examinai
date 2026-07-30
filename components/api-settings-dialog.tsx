@@ -9,10 +9,9 @@ import {
   isLocalHistoryDirectorySupported,
   selectLocalHistoryDirectory,
 } from "@/lib/browser/local-history-directory";
+import { loadProviderSettings, saveProviderSettings } from "@/lib/browser/provider-settings";
 import { useI18n } from "@/lib/i18n/provider";
 import type { AiProviderSettings } from "@/lib/types";
-
-const SETTINGS_STORAGE_KEY = "examinai-api-settings-v1";
 
 type ProviderKind = "scoring" | "vision";
 
@@ -48,15 +47,6 @@ function toSettings(draft: Record<ProviderKind, ProviderDraft>): AiProviderSetti
   return scoring || vision ? { scoring, vision } : undefined;
 }
 
-function loadLocalSettings() {
-  try {
-    const value = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    return value ? JSON.parse(value) as AiProviderSettings : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -72,7 +62,7 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
   const [historyDirectoryError, setHistoryDirectoryError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = loadLocalSettings();
+    const stored = loadProviderSettings();
     if (stored) onChange(stored);
     // This component may appear in multiple top bars. Each copy reads the
     // same browser-local value once; parent state keeps them synchronized.
@@ -135,8 +125,7 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
   function save() {
     const nextSettings = toSettings(draft);
     try {
-      if (nextSettings) window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
-      else window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+      saveProviderSettings(nextSettings);
     } catch {
       setError(t.writing.settingsSaveError);
       return;
@@ -146,7 +135,7 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
   }
 
   function reset() {
-    window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    saveProviderSettings(undefined);
     const nextDraft = { scoring: toDraft(undefined, "scoring"), vision: toDraft(undefined, "vision") };
     setDraft(nextDraft);
     setModels({ scoring: [], vision: [] });

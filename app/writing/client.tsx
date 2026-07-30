@@ -24,6 +24,7 @@ import {
   WritingAssessmentReport,
   type AssessmentData,
 } from "@/components/writing/writing-assessment-report";
+import { loadProviderSettings, saveProviderSettings } from "@/lib/browser/provider-settings";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Language } from "@/lib/i18n/translations";
 import type { AiProviderSettings, CambridgeQuestionSource, WritingSubmission } from "@/lib/types";
@@ -106,12 +107,17 @@ export default function WritingPageClient() {
   const [historyError, setHistoryError] = useState(false);
   const [historyDeleteError, setHistoryDeleteError] = useState(false);
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
-  const [providerSettings, setProviderSettings] = useState<AiProviderSettings | undefined>();
+  const [providerSettings, setProviderSettings] = useState<AiProviderSettings | undefined>(loadProviderSettings);
   const controllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const wordCount = essay.trim() ? essay.trim().split(/\s+/).length : 0;
   const canAssess = question.trim().length > 0 && essay.trim().length > 0;
+
+  function handleProviderSettingsChange(settings: AiProviderSettings | undefined) {
+    saveProviderSettings(settings);
+    setProviderSettings(settings);
+  }
 
   useEffect(() => {
     return () => controllerRef.current?.abort();
@@ -363,7 +369,7 @@ export default function WritingPageClient() {
           onHistory={() => void showHistory()}
           onRetry={(sections) => void requestAssessment(submission, sections)}
           providerSettings={providerSettings}
-          onProviderSettingsChange={setProviderSettings}
+          onProviderSettingsChange={handleProviderSettingsChange}
         />
       </div>
     );
@@ -379,7 +385,7 @@ export default function WritingPageClient() {
         deletingId={deletingHistoryId}
         questionBank={questionBank}
         providerSettings={providerSettings}
-        onProviderSettingsChange={setProviderSettings}
+        onProviderSettingsChange={handleProviderSettingsChange}
         onNewEssay={startNewEssay}
         onReload={() => void showHistory()}
         onOpenRecord={(id) => void openHistoryRecord(id)}
@@ -404,7 +410,7 @@ export default function WritingPageClient() {
         </div>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
-          <ApiSettingsButton value={providerSettings} onChange={setProviderSettings} />
+          <ApiSettingsButton value={providerSettings} onChange={handleProviderSettingsChange} />
           <Button variant="outline" size="sm" onClick={() => void showHistory()}>
             <FileClock className="size-4" />
             <span className="ml-1.5 hidden sm:inline">{t.common.history}</span>
