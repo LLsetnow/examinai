@@ -409,9 +409,6 @@ export default function WritingPageClient() {
             <FileClock className="size-4" />
             <span className="ml-1.5 hidden sm:inline">{t.common.history}</span>
           </Button>
-          <span className="hidden rounded-full border border-red-100 bg-white/80 px-3 py-1.5 text-xs font-medium text-primary shadow-sm sm:inline-flex">
-            {t.writing.noAccount}
-          </span>
         </div>
       </header>
 

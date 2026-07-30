@@ -10,7 +10,6 @@ export interface Translations {
   };
   writing: {
     appSubtitle: string;
-    noAccount: string;
     instantFeedback: string;
     heroTitleStart: string;
     heroTitleAccent: string;
@@ -131,7 +130,6 @@ export const translations: Record<Language, Translations> = {
     },
     writing: {
       appSubtitle: "IELTS 写作智能批改",
-      noAccount: "匿名使用 · 无需账号",
       instantFeedback: "即时 AI 批改",
       heroTitleStart: "获得清晰、",
       heroTitleAccent: "可执行的雅思报告。",
@@ -250,7 +248,6 @@ export const translations: Record<Language, Translations> = {
     },
     writing: {
       appSubtitle: "IELTS Writing Assessment",
-      noAccount: "Anonymous · no account needed",
       instantFeedback: "Instant AI feedback",
       heroTitleStart: "Get a clear,",
       heroTitleAccent: "actionable IELTS report.",
