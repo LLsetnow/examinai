@@ -13,6 +13,7 @@ import RobotIcon from "@/components/icons/logo";
 import { ApiSettingsButton } from "@/components/api-settings-dialog";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { WritingFeedbackReport } from "@/components/writing/writing-feedback-report";
+import { ReportExportActions } from "@/components/writing/report-export-actions";
 import { useI18n } from "@/lib/i18n/provider";
 import type {
   WritingImprovementFeedback,
@@ -93,6 +94,14 @@ export function WritingAssessmentReport({
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           {onProviderSettingsChange ? <ApiSettingsButton value={providerSettings} onChange={onProviderSettingsChange} /> : null}
+          <ReportExportActions
+            submission={submission}
+            overview={assessment.overview}
+            scoring={assessment.scoring}
+            languageAnalysis={assessment.languageAnalysis}
+            improvement={assessment.improvement}
+            overallScore={overallScore}
+          />
           {onHistory && (
             <Button variant="outline" size="sm" onClick={onHistory}>
               <FileClock className="size-4" />

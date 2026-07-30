@@ -68,6 +68,15 @@ export interface Translations {
     settingsModelsError: string;
     settingsSaveError: string;
     settingsLocalOnly: string;
+    settingsHistoryFolder: string;
+    settingsHistoryFolderDescription: string;
+    settingsHistoryFolderEmpty: string;
+    settingsHistoryFolderChoose: string;
+    settingsHistoryFolderChange: string;
+    settingsHistoryFolderClear: string;
+    settingsHistoryFolderUnsupported: string;
+    settingsHistoryFolderError: string;
+    settingsHistoryFolderPrivacy: string;
     settingsReset: string;
     settingsSave: string;
     historyTitle: string;
@@ -104,6 +113,10 @@ export interface Translations {
     suggestion: string;
     highlight: string;
     noMappedFeedback: string;
+    exportPdf: string;
+    exportJson: string;
+    exportJsonSaved: string;
+    exportJsonDownloaded: string;
   };
 }
 
@@ -176,6 +189,15 @@ export const translations: Record<Language, Translations> = {
       settingsModelsError: "无法获取模型列表，请检查 API 地址和密钥。",
       settingsSaveError: "无法保存本浏览器设置。",
       settingsLocalOnly: "密钥仅保存在当前浏览器，并只随你的评分请求发送；不会显示、保存或同步到服务器。",
+      settingsHistoryFolder: "本地历史文件夹",
+      settingsHistoryFolderDescription: "选择电脑中的文件夹后，导出的 JSON 批改报告会直接保存到这里。",
+      settingsHistoryFolderEmpty: "未选择文件夹",
+      settingsHistoryFolderChoose: "选择文件夹",
+      settingsHistoryFolderChange: "更换路径",
+      settingsHistoryFolderClear: "清除",
+      settingsHistoryFolderUnsupported: "当前浏览器不支持选择本地文件夹；JSON 将使用浏览器下载。",
+      settingsHistoryFolderError: "无法取得该文件夹的写入权限，请重新选择。",
+      settingsHistoryFolderPrivacy: "浏览器不会提供绝对路径，也不能直接打开系统文件夹；文件夹授权仅保存在当前浏览器，可随时清除。",
       settingsReset: "恢复服务器默认",
       settingsSave: "保存设置",
       historyTitle: "批改历史",
@@ -212,6 +234,10 @@ export const translations: Record<Language, Translations> = {
       suggestion: "表达优化建议",
       highlight: "亮点句子",
       noMappedFeedback: "带有原文定位的反馈会显示在这里。",
+      exportPdf: "导出 PDF",
+      exportJson: "导出 JSON",
+      exportJsonSaved: "JSON 报告已保存到选定的本地文件夹。",
+      exportJsonDownloaded: "JSON 报告已下载。",
     },
   },
   en: {
@@ -282,6 +308,15 @@ export const translations: Record<Language, Translations> = {
       settingsModelsError: "Unable to fetch models. Check the API URL and key.",
       settingsSaveError: "This browser could not save the settings.",
       settingsLocalOnly: "Keys are stored only in this browser and sent only with your assessment request; they are never displayed, saved or synced by the server.",
+      settingsHistoryFolder: "Local history folder",
+      settingsHistoryFolderDescription: "Choose a folder on this computer. Exported JSON assessment reports will be saved there directly.",
+      settingsHistoryFolderEmpty: "No folder selected",
+      settingsHistoryFolderChoose: "Choose folder",
+      settingsHistoryFolderChange: "Change folder",
+      settingsHistoryFolderClear: "Clear",
+      settingsHistoryFolderUnsupported: "This browser cannot select a local folder. JSON reports will be downloaded instead.",
+      settingsHistoryFolderError: "This folder could not be granted write permission. Please choose it again.",
+      settingsHistoryFolderPrivacy: "Browsers do not expose an absolute path or open system folders directly. Permission stays only in this browser and can be cleared at any time.",
       settingsReset: "Use server defaults",
       settingsSave: "Save settings",
       historyTitle: "Assessment history",
@@ -318,6 +353,10 @@ export const translations: Record<Language, Translations> = {
       suggestion: "Expression improvement",
       highlight: "Strength",
       noMappedFeedback: "Feedback linked to the original essay will appear here.",
+      exportPdf: "Export PDF",
+      exportJson: "Export JSON",
+      exportJsonSaved: "The JSON report was saved to the selected local folder.",
+      exportJsonDownloaded: "The JSON report was downloaded.",
     },
   },
 };

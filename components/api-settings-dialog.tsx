@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Check, ChevronDown, Eye, KeyRound, ListFilter, Settings2, X } from "lucide-react";
+import { Check, ChevronDown, Eye, FolderOpen, KeyRound, ListFilter, Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  clearLocalHistoryDirectory,
+  getLocalHistoryDirectoryName,
+  isLocalHistoryDirectorySupported,
+  selectLocalHistoryDirectory,
+} from "@/lib/browser/local-history-directory";
 import { useI18n } from "@/lib/i18n/provider";
 import type { AiProviderSettings } from "@/lib/types";
 
@@ -61,6 +67,9 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
   const [models, setModels] = useState<Record<ProviderKind, string[]>>({ scoring: [], vision: [] });
   const [loadingKind, setLoadingKind] = useState<ProviderKind | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [historyDirectoryName, setHistoryDirectoryName] = useState("");
+  const [historyDirectoryBusy, setHistoryDirectoryBusy] = useState(false);
+  const [historyDirectoryError, setHistoryDirectoryError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = loadLocalSettings();
@@ -74,6 +83,8 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
     if (!open) return;
     setDraft({ scoring: toDraft(value, "scoring"), vision: toDraft(value, "vision") });
     setError(null);
+    setHistoryDirectoryName(getLocalHistoryDirectoryName());
+    setHistoryDirectoryError(null);
   }, [open, value]);
 
   useEffect(() => {
@@ -140,7 +151,30 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
     setDraft(nextDraft);
     setModels({ scoring: [], vision: [] });
     setError(null);
+    setHistoryDirectoryName("");
+    setHistoryDirectoryError(null);
+    void clearLocalHistoryDirectory();
     onChange(undefined);
+  }
+
+  async function selectHistoryDirectory() {
+    setHistoryDirectoryBusy(true);
+    setHistoryDirectoryError(null);
+    const result = await selectLocalHistoryDirectory();
+    if (result === "saved") {
+      setHistoryDirectoryName(getLocalHistoryDirectoryName());
+    } else if (result === "unsupported") {
+      setHistoryDirectoryError(t.writing.settingsHistoryFolderUnsupported);
+    } else if (result === "permission-denied") {
+      setHistoryDirectoryError(t.writing.settingsHistoryFolderError);
+    }
+    setHistoryDirectoryBusy(false);
+  }
+
+  async function clearHistoryDirectory() {
+    await clearLocalHistoryDirectory();
+    setHistoryDirectoryName("");
+    setHistoryDirectoryError(null);
   }
 
   return (
@@ -198,6 +232,37 @@ export function ApiSettingsButton({ value, onChange }: ApiSettingsButtonProps) {
                 onChange={(field, nextValue) => updateProvider("vision", field, nextValue)}
                 onFetchModels={() => void fetchModels("vision")}
               />
+              <section className="rounded-2xl border border-border bg-muted/25 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
+                    <FolderOpen className="size-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-foreground">{t.writing.settingsHistoryFolder}</h3>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{t.writing.settingsHistoryFolderDescription}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-white px-3 py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                    {historyDirectoryName || t.writing.settingsHistoryFolderEmpty}
+                  </span>
+                  {historyDirectoryName ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => void clearHistoryDirectory()}>
+                      {t.writing.settingsHistoryFolderClear}
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant="outline" size="sm" onClick={() => void selectHistoryDirectory()} disabled={historyDirectoryBusy || !isLocalHistoryDirectorySupported()}>
+                    <FolderOpen className={`size-4 ${historyDirectoryBusy ? "animate-pulse" : ""}`} />
+                    {historyDirectoryName ? t.writing.settingsHistoryFolderChange : t.writing.settingsHistoryFolderChoose}
+                  </Button>
+                </div>
+                {historyDirectoryError ? <p role="alert" className="mt-2 text-xs text-red-700">{historyDirectoryError}</p> : null}
+                <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                  {isLocalHistoryDirectorySupported()
+                    ? t.writing.settingsHistoryFolderPrivacy
+                    : t.writing.settingsHistoryFolderUnsupported}
+                </p>
+              </section>
             </div>
 
             {error ? <p role="alert" className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
