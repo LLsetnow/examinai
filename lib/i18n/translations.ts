@@ -110,12 +110,14 @@ export interface Translations {
     bandScore: string;
     assessmentFailed: string;
     assessmentPartialError: string;
+    assessmentIncomplete: string;
     synonyms: string;
     topicPhrases: string;
     severeError: string;
     suggestion: string;
     highlight: string;
     noMappedFeedback: string;
+    noCorrectionsGenerated: string;
     correctionFallbackNotice: string;
     correctionFallbackExplanation: string;
     correctionRegenerateNotice: string;
@@ -238,12 +240,14 @@ export const translations: Record<Language, Translations> = {
       bandScore: "雅思参考分数",
       assessmentFailed: "批改失败",
       assessmentPartialError: "部分反馈暂时未能生成。",
+      assessmentIncomplete: "评分在完成前中断，部分结果未生成，请重试。",
       synonyms: "近义词",
       topicPhrases: "相关话题",
       severeError: "严重错误或语法问题",
       suggestion: "表达优化建议",
       highlight: "亮点句子",
       noMappedFeedback: "带有原文定位的反馈会显示在这里。",
+      noCorrectionsGenerated: "本次未生成原句批改，如结果不完整可点击上方重试。",
       correctionFallbackNotice: "这份历史报告未保存可直接定位的原句，以下标记已根据原文与校正版的差异自动还原。",
       correctionFallbackExplanation: "该句与校正版存在修改，已在考生原文中标记。",
       correctionRegenerateNotice: "这份历史记录的原句批改来自旧版结果，内容与考生原文不一致，无法安全高亮。可重新生成仅此部分的批改。",
@@ -364,12 +368,14 @@ export const translations: Record<Language, Translations> = {
       bandScore: "IELTS reference band",
       assessmentFailed: "Assessment failed",
       assessmentPartialError: "Some feedback could not be generated.",
+      assessmentIncomplete: "The assessment ended before finishing, so some results are missing. Please retry.",
       synonyms: "Synonyms",
       topicPhrases: "Topic phrases",
       severeError: "Serious error or grammar issue",
       suggestion: "Expression improvement",
       highlight: "Strength",
       noMappedFeedback: "Feedback linked to the original essay will appear here.",
+      noCorrectionsGenerated: "No sentence-level corrections were generated. If the result looks incomplete, retry from the notice above.",
       correctionFallbackNotice: "This historical report did not retain directly mappable excerpts. The markers below were recovered from differences between the original and corrected essays.",
       correctionFallbackExplanation: "This sentence differs from the corrected essay and has been marked in the original.",
       correctionRegenerateNotice: "The correction entries in this historical report came from an older result and do not match the original essay, so they cannot be highlighted safely. Regenerate this section to repair it.",

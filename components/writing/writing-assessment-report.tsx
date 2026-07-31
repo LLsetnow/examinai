@@ -30,6 +30,8 @@ export interface AssessmentData {
   languageAnalysis: WritingLanguageFeedback | null;
   improvement: WritingImprovementFeedback | null;
   done: boolean;
+  /** True when the stream ended before the server signaled completion. */
+  incomplete?: boolean;
   failedSections: Record<string, string>;
 }
 
@@ -60,6 +62,9 @@ export function WritingAssessmentReport({
 }: WritingAssessmentReportProps) {
   const { t } = useI18n();
   const failedSections = Object.keys(assessment.failedSections);
+  // Loaders should stop once the stream reaches any terminal state, whether it
+  // completed successfully or ended early.
+  const isStreaming = !assessment.done && !assessment.incomplete;
   const hasAnyFeedback =
     !!assessment.overview ||
     !!assessment.scoring ||
@@ -146,7 +151,9 @@ export function WritingAssessmentReport({
               <Alert variant="destructive" className="mx-auto max-w-5xl">
                 <AlertCircle />
                 <AlertDescription>
-                  {t.feedback.assessmentPartialError}
+                  {assessment.incomplete
+                    ? t.feedback.assessmentIncomplete
+                    : t.feedback.assessmentPartialError}
                 </AlertDescription>
                 {onRetry && (
                   <AlertAction>
@@ -168,6 +175,7 @@ export function WritingAssessmentReport({
               improvement={assessment.improvement}
               overallScore={overallScore}
               taskResponseLabel={taskResponseLabel}
+              isStreaming={isStreaming}
               onRegenerateCorrections={onRegenerateCorrections}
               isRegeneratingCorrections={isRegeneratingCorrections}
             />

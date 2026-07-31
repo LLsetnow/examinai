@@ -49,6 +49,8 @@ interface WritingFeedbackReportProps {
   improvement: WritingImprovementFeedback | null;
   overallScore: number | null;
   taskResponseLabel: string;
+  /** Whether the assessment stream is still in progress (controls loaders). */
+  isStreaming?: boolean;
   onRegenerateCorrections?: () => void;
   isRegeneratingCorrections?: boolean;
 }
@@ -245,6 +247,7 @@ export function WritingFeedbackReport({
   improvement,
   overallScore,
   taskResponseLabel,
+  isStreaming = false,
   onRegenerateCorrections,
   isRegeneratingCorrections = false,
 }: WritingFeedbackReportProps) {
@@ -395,6 +398,7 @@ export function WritingFeedbackReport({
                   languageAnalysis={languageAnalysis}
                   overallScore={overallScore}
                   taskResponseLabel={taskResponseLabel}
+                  isStreaming={isStreaming}
                 />
               )}
               {activeTab === "correction" && (
@@ -468,12 +472,14 @@ function SummaryPanel({
   languageAnalysis,
   overallScore,
   taskResponseLabel,
+  isStreaming,
 }: {
   overview: WritingOverviewFeedback | null;
   scoring: WritingScoringFeedback | null;
   languageAnalysis: WritingLanguageFeedback | null;
   overallScore: number | null;
   taskResponseLabel: string;
+  isStreaming: boolean;
 }) {
   const { t } = useI18n();
   const criteria = [
@@ -531,9 +537,9 @@ function SummaryPanel({
             />
           </div>
         </div>
-      ) : (
+      ) : isStreaming ? (
         <LoadingPanel label={t.feedback.waitingForFeedback} />
-      )}
+      ) : null}
 
       {(scoring || languageAnalysis) && (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -656,8 +662,10 @@ function CorrectionsPanel({
           ))}
           <p className="px-1 text-xs text-muted-foreground">{t.feedback.noMappedFeedback}</p>
         </div>
-      ) : (
+      ) : isRegenerating ? (
         <EmptyMappedFeedback label={t.feedback.waitingForFeedback} />
+      ) : (
+        <EmptyMappedFeedback label={t.feedback.noCorrectionsGenerated} />
       )}
     </div>
   );

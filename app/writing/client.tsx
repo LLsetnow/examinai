@@ -81,6 +81,8 @@ interface HistoryRecordSummary {
   failedSections: Record<string, string>;
 }
 
+const ALL_SECTIONS = ["overview", "scoring", "languageAnalysis", "improvement"];
+
 function createEmptyAssessment(): AssessmentData {
   return {
     overview: null,
@@ -88,8 +90,25 @@ function createEmptyAssessment(): AssessmentData {
     languageAnalysis: null,
     improvement: null,
     done: false,
+    incomplete: false,
     failedSections: {},
   };
+}
+
+/**
+ * Whether a section holds its final payload. Language analysis streams a
+ * temporary correction event first (scores still null), so a non-null value
+ * alone does not mean the section finished.
+ */
+function isSectionComplete(section: string, assessment: AssessmentData): boolean {
+  if (section === "overview") return !!assessment.overview;
+  if (section === "scoring") return !!assessment.scoring;
+  if (section === "improvement") return !!assessment.improvement;
+  if (section === "languageAnalysis") {
+    return !!assessment.languageAnalysis
+      && assessment.languageAnalysis.lexicalResourceScore !== null;
+  }
+  return false;
 }
 
 function calculateOverallScore(assessment: AssessmentData) {
@@ -290,6 +309,7 @@ export default function WritingPageClient() {
       languageAnalysis: record.feedback.languageAnalysis,
       improvement: record.feedback.improvement,
       done: true,
+      incomplete: false,
       failedSections: record.failedSections,
     });
     setScreen("report");
@@ -327,7 +347,7 @@ export default function WritingPageClient() {
       setAssessment((current) => {
         const failedSections = { ...current.failedSections };
         for (const section of sections) delete failedSections[section];
-        return { ...current, failedSections, done: false };
+        return { ...current, failedSections, done: false, incomplete: false };
       });
     }
 
@@ -355,12 +375,14 @@ export default function WritingPageClient() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedDone = false;
 
       function applyEvents(lines: string[]) {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
             const { type, data } = JSON.parse(line.slice(6));
+            if (type === "done") receivedDone = true;
             setAssessment((current) => {
               if (type === "overview") return { ...current, overview: data };
               if (type === "scoring") return { ...current, scoring: data };
@@ -390,14 +412,29 @@ export default function WritingPageClient() {
         applyEvents(lines);
       }
       if (buffer.trim()) applyEvents([buffer]);
-      setAssessment((current) => (current.done ? current : { ...current, done: true }));
+      // The stream is only "complete" when the server emitted its done event.
+      // If the reader closed first (proxy timeout, truncated response), flag the
+      // unfinished sections so the user sees a clear notice and can retry,
+      // instead of a partial report masquerading as final.
+      if (!receivedDone) {
+        const requested = sections ?? ALL_SECTIONS;
+        setAssessment((current) => {
+          const failedSections = { ...current.failedSections };
+          for (const section of requested) {
+            if (!isSectionComplete(section, current)) {
+              failedSections[section] = t.feedback.assessmentIncomplete;
+            }
+          }
+          return { ...current, incomplete: true, failedSections };
+        });
+      }
     } catch (error) {
       if (controller.signal.aborted) return;
       const message = error instanceof Error ? error.message : "Assessment failed";
-      const failed = sections ?? ["overview", "scoring", "languageAnalysis", "improvement"];
+      const failed = sections ?? ALL_SECTIONS;
       setAssessment((current) => ({
         ...current,
-        done: true,
+        incomplete: true,
         failedSections: Object.fromEntries(failed.map((section) => [section, message])),
       }));
     }
@@ -445,7 +482,7 @@ export default function WritingPageClient() {
           onHistory={() => void showHistory()}
           onRetry={(sections) => void requestAssessment(submission, sections)}
           onRegenerateCorrections={regenerateCorrections}
-          isRegeneratingCorrections={!assessment.done}
+          isRegeneratingCorrections={!assessment.done && !assessment.incomplete}
           providerSettings={providerSettings}
           onProviderSettingsChange={handleProviderSettingsChange}
           feedbackLanguage={language}
