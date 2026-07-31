@@ -88,7 +88,7 @@ ZHIPUAI_VISION_MODEL=glm-4.6v
 
 ## CI/CD 和线上架构
 
-`main` 推送会执行 `.github/workflows/deploy.yml`：
+向 `main` 推送**且改动了应用源码或构建相关文件**时才会执行 `.github/workflows/deploy.yml`（触发路径：`app/`、`components/`、`lib/`、`public/`、`data/cambridge-chart-facts/` 及 `package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`next.config.*`、`postcss.config.mjs`、`tsconfig.json`）。纯文档改动不会触发部署；需要强制发布时用手动 `workflow_dispatch`。工作流步骤：
 
 1. GitHub Actions 在 Ubuntu + Node 22 环境运行 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
 2. 工作流打包 `.next` 与 `git archive HEAD` 的源码，并通过 SSH 上传。
