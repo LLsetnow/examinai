@@ -97,7 +97,7 @@ pnpm run build
 ### 发布链路
 
 ```text
-push main
+push main（改动应用源码或构建相关文件时）
   → GitHub Actions（Ubuntu / Node 22）
   → pnpm install --frozen-lockfile + pnpm run build
   → 打包 .next-release.tgz 与 git archive 源码
@@ -107,7 +107,7 @@ push main
   → Nginx 反向代理到 https://ielts.akai.ink
 ```
 
-- 工作流：`.github/workflows/deploy.yml`；仅 `main` 推送和手动 `workflow_dispatch` 会发布。
+- 工作流：`.github/workflows/deploy.yml`；仅在向 `main` 推送**且改动应用源码或构建相关文件**（`app/`、`components/`、`lib/`、`public/`、`data/cambridge-chart-facts/`、`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`next.config.*`、`postcss.config.mjs`、`tsconfig.json`）时自动发布；纯文档改动不触发，手动 `workflow_dispatch` 可强制发布。
 - 构建必须在 GitHub Actions 的 Linux Runner 上完成。**不要**在生产服务器执行 `next build`：服务器资源有限，构建会影响在线服务。
 - 工作流需要 `DEPLOY_HOST`、`DEPLOY_KNOWN_HOSTS`、`DEPLOY_SSH_KEY` 三个 GitHub Secrets；它们只可在 GitHub 配置页面维护。
 - 生产应用目录：`/var/examinai`；服务名：`examinai`；内部端口：`127.0.0.1:3004`。
