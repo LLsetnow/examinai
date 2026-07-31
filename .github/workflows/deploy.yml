@@ -3,6 +3,21 @@ name: Deploy Examinai
 on:
   push:
     branches: [main]
+    # 仅在合并到 main 且改动了应用源码/构建产物相关文件时才自动发布。
+    # 纯文档（*.md、CLAUDE.md、AGENTS.md 等）改动不会触发部署。
+    # 需要跳过此过滤器强制发布时，用手动 workflow_dispatch。
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'data/cambridge-chart-facts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'next.config.*'
+      - 'postcss.config.mjs'
+      - 'tsconfig.json'
   workflow_dispatch:
 
 concurrency:
