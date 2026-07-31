@@ -24,6 +24,20 @@ pnpm run build
 
 项目使用 pnpm 11、Next.js 16（App Router）、React 19、TypeScript、Tailwind CSS 4、Base UI、Vercel AI SDK 和 Zod。图标使用 Lucide，部分动效来自 Lottie。
 
+## 开发工作流（分支与 PR）
+
+每次开发任务都在独立的 git worktree 中进行，基于最新 `main` branch out 新分支，改动拆成若干条聚焦的 PR 合并回 `main`；不要直接在 `main` 上提交或改写 `main` 历史。
+
+1. 基于最新 `main` 新建 worktree 与分支（分支名用 Conventional 前缀，如 `feat/…`、`fix/…`、`docs/…`）：
+   ```bash
+   git fetch origin
+   git worktree add ../examinai-<主题> -b <类型>/<主题> origin/main
+   ```
+2. 在该 worktree 内完成改动，按主题拆成单一、可独立评审的 PR，逐条合并到 `main`，避免一条大而杂的 PR。
+3. 每条 PR 前运行与改动相称的检查：`pnpm run lint`、`pnpm run build`、`git diff --check`。
+4. 合并后清理：`git worktree remove ../examinai-<主题>` 并删除已合并分支。
+5. 改动 `CLAUDE.md` 或 `AGENTS.md` 时必须同步另一个文件，保持两者内容一致。
+
 ## 核心产品行为
 
 1. 用户输入自定义题目或从剑雅 C10–C21 选择题目，填写作文；Task 1 可以带图表图片。

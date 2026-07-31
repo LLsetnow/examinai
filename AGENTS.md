@@ -32,6 +32,20 @@ pnpm run build
 
 目前没有独立测试命令。不要把 `next build` 的成功误写成已执行端到端或模型质量测试。
 
+## 开发工作流（分支与 PR）
+
+每次开发任务都在独立的 git worktree 中进行，基于最新 `main` branch out 新分支，改动拆成若干条聚焦的 PR 合并回 `main`；不要直接在 `main` 上提交或改写 `main` 历史。
+
+1. 基于最新 `main` 新建 worktree 与分支（分支名用 Conventional 前缀，如 `feat/…`、`fix/…`、`docs/…`）：
+   ```bash
+   git fetch origin
+   git worktree add ../examinai-<主题> -b <类型>/<主题> origin/main
+   ```
+2. 在该 worktree 内完成改动，按主题拆成单一、可独立评审的 PR，逐条合并到 `main`，避免一条大而杂的 PR。
+3. 每条 PR 前运行与改动相称的检查：`pnpm run lint`、`pnpm run build`、`git diff --check`。
+4. 合并后清理：`git worktree remove ../examinai-<主题>` 并删除已合并分支。
+5. 改动 `CLAUDE.md` 或 `AGENTS.md` 时必须同步另一个文件，保持两者内容一致。
+
 ## 代码结构
 
 | 路径 | 作用 |
