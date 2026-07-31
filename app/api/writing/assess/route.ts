@@ -689,7 +689,11 @@ export async function POST(req: Request) {
               model,
               system: localizePrompt(WRITING_EXPERT_2_PROMPT, feedbackLanguage),
               messages,
-              maxOutputTokens: 3000,
+              // Task Response + Coherence are graded in one call whose JSON holds
+              // two summaries and four strength/weakness arrays. Longer Task 2
+              // responses can overflow a tighter budget, truncating the JSON so
+              // both scores drop out together. Give this section ample room.
+              maxOutputTokens: 8192,
               schema: scoringSchema,
               eventName: "scoring",
               normalize: normalizeScoring,
