@@ -116,6 +116,10 @@ export interface Translations {
     suggestion: string;
     highlight: string;
     noMappedFeedback: string;
+    correctionFallbackNotice: string;
+    correctionFallbackExplanation: string;
+    correctionRegenerateNotice: string;
+    correctionRegenerateAction: string;
     exportPdf: string;
     exportJson: string;
     exportJsonSaved: string;
@@ -240,6 +244,10 @@ export const translations: Record<Language, Translations> = {
       suggestion: "表达优化建议",
       highlight: "亮点句子",
       noMappedFeedback: "带有原文定位的反馈会显示在这里。",
+      correctionFallbackNotice: "这份历史报告未保存可直接定位的原句，以下标记已根据原文与校正版的差异自动还原。",
+      correctionFallbackExplanation: "该句与校正版存在修改，已在考生原文中标记。",
+      correctionRegenerateNotice: "这份历史记录的原句批改来自旧版结果，内容与考生原文不一致，无法安全高亮。可重新生成仅此部分的批改。",
+      correctionRegenerateAction: "重新生成原句批改",
       exportPdf: "导出 PDF",
       exportJson: "导出 JSON",
       exportJsonSaved: "JSON 报告已保存到选定的本地文件夹。",
@@ -362,6 +370,10 @@ export const translations: Record<Language, Translations> = {
       suggestion: "Expression improvement",
       highlight: "Strength",
       noMappedFeedback: "Feedback linked to the original essay will appear here.",
+      correctionFallbackNotice: "This historical report did not retain directly mappable excerpts. The markers below were recovered from differences between the original and corrected essays.",
+      correctionFallbackExplanation: "This sentence differs from the corrected essay and has been marked in the original.",
+      correctionRegenerateNotice: "The correction entries in this historical report came from an older result and do not match the original essay, so they cannot be highlighted safely. Regenerate this section to repair it.",
+      correctionRegenerateAction: "Regenerate corrections",
       exportPdf: "Export PDF",
       exportJson: "Export JSON",
       exportJsonSaved: "The JSON report was saved to the selected local folder.",

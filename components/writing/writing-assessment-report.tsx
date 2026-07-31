@@ -39,6 +39,8 @@ interface WritingAssessmentReportProps {
   onNewEssay: () => void;
   onHistory?: () => void;
   onRetry?: (sections: string[]) => void;
+  onRegenerateCorrections?: () => void;
+  isRegeneratingCorrections?: boolean;
   providerSettings?: AiProviderSettings;
   onProviderSettingsChange?: (settings: AiProviderSettings | undefined) => void;
   feedbackLanguage: "zh" | "en";
@@ -50,6 +52,8 @@ export function WritingAssessmentReport({
   onNewEssay,
   onHistory,
   onRetry,
+  onRegenerateCorrections,
+  isRegeneratingCorrections = false,
   providerSettings,
   onProviderSettingsChange,
   feedbackLanguage,
@@ -164,6 +168,8 @@ export function WritingAssessmentReport({
               improvement={assessment.improvement}
               overallScore={overallScore}
               taskResponseLabel={taskResponseLabel}
+              onRegenerateCorrections={onRegenerateCorrections}
+              isRegeneratingCorrections={isRegeneratingCorrections}
             />
           </div>
         </>

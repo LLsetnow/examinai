@@ -405,6 +405,53 @@ function formatDiffsForPrompt(diffs: SentenceDiff[]): string {
     .join("\n\n");
 }
 
+function isExactOriginalExcerpt(essay: string, excerpt: string) {
+  const trimmedExcerpt = excerpt.trim();
+  return Boolean(trimmedExcerpt)
+    && essay.toLocaleLowerCase().includes(trimmedExcerpt.toLocaleLowerCase());
+}
+
+function mappableInlineAnnotations(
+  annotations: z.infer<typeof languageAnnotationSchema>,
+  essay: string,
+  diffs: SentenceDiff[],
+  feedbackLanguage: FeedbackLanguage,
+): z.infer<typeof languageAnnotationSchema> {
+  const usedHighlights = new Set<string>();
+  const essayHighlights = annotations.essayHighlights.filter((item) => {
+    const key = item.text.trim().toLocaleLowerCase();
+    if (!isExactOriginalExcerpt(essay, item.text) || usedHighlights.has(key)) return false;
+    usedHighlights.add(key);
+    return true;
+  });
+
+  const usedSynonyms = new Set<string>();
+  const synonymSuggestions = annotations.synonymSuggestions.filter((item) => {
+    const key = item.text.trim().toLocaleLowerCase();
+    if (!isExactOriginalExcerpt(essay, item.text) || usedSynonyms.has(key)) return false;
+    usedSynonyms.add(key);
+    return true;
+  });
+
+  if (essayHighlights.length > 0) {
+    return { essayHighlights, synonymSuggestions };
+  }
+
+  const fallbackExplanation = feedbackLanguage === "zh"
+    ? "该句与校正版存在修改，已在考生原文中标记。"
+    : "This sentence differs from the corrected essay and has been marked in the original.";
+  const fallbackTexts = new Set<string>();
+  const fallbackHighlights = diffs.flatMap((diff) => {
+    const text = diff.sentence.trim();
+    const key = text.toLocaleLowerCase();
+    if (!isExactOriginalExcerpt(essay, text) || fallbackTexts.has(key)) return [];
+    fallbackTexts.add(key);
+    return [{ text, kind: "error" as const, explanation: fallbackExplanation }];
+  }).slice(0, 6);
+
+  return { essayHighlights: fallbackHighlights, synonymSuggestions };
+}
+
 /** Remove vocabulary items whose word already appears in the student's essay. */
 function filterRedundantVocabulary(
   vocabulary: { word: string; meaning: string; usage: string }[],
@@ -712,6 +759,13 @@ export async function POST(req: Request) {
               // even if this cosmetic enrichment cannot be parsed.
               console.warn("Failed to generate language annotations:", error);
             }
+
+            annotations = mappableInlineAnnotations(
+              annotations,
+              essay,
+              diffs,
+              feedbackLanguage,
+            );
 
             const finalData = normalizeLanguageAnalysis({
               correctedEssay,

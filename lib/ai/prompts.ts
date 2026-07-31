@@ -132,9 +132,10 @@ Respond with ONLY valid JSON:
 }
 
 Rules:
-- essayHighlights: provide 3-6 items. Each text must be an exact, contiguous excerpt from the student's original essay.
+- essayHighlights: provide 3-6 items. Each text must be copied character-for-character as one exact, contiguous excerpt from the section labelled "Student's Essay". Never quote from the corrected essay, the diff, or your own rewrite.
 - Use error only for serious factual/trend errors or grammar errors; use suggestion for expression, precision or collocation; use strength only for an effective complete sentence. Do not mark the same text twice.
-- synonymSuggestions: provide 2-4 items. Each text must be an exact, contiguous word or phrase from the original essay. Give 2-4 natural alternatives only when they fit the context.
+- synonymSuggestions: provide 2-4 items. Each text must be copied character-for-character as an exact, contiguous word or phrase from "Student's Essay". Give 2-4 natural alternatives only when they fit the context.
+- Before returning JSON, verify every text value exists verbatim in "Student's Essay". Omit an item instead of paraphrasing it.
 - Do not score the essay and do not add any fields beyond the JSON schema.`;
 
 export const WRITING_EXPERT_3_FEEDBACK_PROMPT = `You are an IELTS Writing Expert responsible for grading the Lexical Resource and Grammatical Range & Accuracy criteria.
@@ -165,8 +166,9 @@ ${WRITING_FEEDBACK_GUIDELINES}
 - Common Grammar issues: complex sentences that collapse mid-way, article errors, subject-verb agreement, countable/uncountable nouns, preposition errors
 - It is important to assess the error severity. Clearly differentiate between something that is incorrect and something that is slightly unidiomatic
 - Task 1 specific: vague trend vocabulary, wrong tenses for past data, mishandled units
-- essayHighlights: provide 3-8 items. The text MUST be an exact, contiguous excerpt from the student's original essay. Use "error" only for serious factual/trend errors or grammar errors; use "suggestion" for expression, precision, or collocation improvements; use "strength" only for an effective complete sentence. Do not mark the same text twice.
-- synonymSuggestions: provide 3-6 items. The text MUST be an exact, contiguous word or phrase from the student's original essay. Offer 2-4 natural alternatives that fit the original context. Do not include an item if a clean contextual replacement is not possible.
+- essayHighlights: provide 3-8 items. The text MUST be copied character-for-character as an exact, contiguous excerpt from the section labelled "Student's Essay", never from the corrected essay, the diff, or your own rewrite. Use "error" only for serious factual/trend errors or grammar errors; use "suggestion" for expression, precision, or collocation improvements; use "strength" only for an effective complete sentence. Do not mark the same text twice.
+- synonymSuggestions: provide 3-6 items. The text MUST be copied character-for-character as an exact, contiguous word or phrase from "Student's Essay". Offer 2-4 natural alternatives that fit the original context. Do not include an item if a clean contextual replacement is not possible.
+- Before returning JSON, verify every essayHighlights.text and synonymSuggestions.text value exists verbatim in "Student's Essay". Omit an item instead of paraphrasing it.
 
 Lexical Resource Band Descriptors:
 - Band 9: Uses a wide range of vocabulary with very natural and sophisticated control of lexical features; rare minor errors occur only as 'slips'.

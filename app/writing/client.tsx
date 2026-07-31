@@ -403,6 +403,14 @@ export default function WritingPageClient() {
     }
   }
 
+  function regenerateCorrections() {
+    if (!submission) return;
+    // A repaired historical report should be written back as a fresh local
+    // JSON export after the language section completes.
+    autoSavedSubmissionRef.current = null;
+    void requestAssessment(submission, ["languageAnalysis"]);
+  }
+
   function submitEssay() {
     if (!canAssess) return;
     const nextSubmission: WritingSubmission = {
@@ -436,6 +444,8 @@ export default function WritingPageClient() {
           onNewEssay={startNewEssay}
           onHistory={() => void showHistory()}
           onRetry={(sections) => void requestAssessment(submission, sections)}
+          onRegenerateCorrections={regenerateCorrections}
+          isRegeneratingCorrections={!assessment.done}
           providerSettings={providerSettings}
           onProviderSettingsChange={handleProviderSettingsChange}
           feedbackLanguage={language}

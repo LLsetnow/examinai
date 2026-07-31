@@ -7,8 +7,10 @@ import {
   CircleAlert,
   FileText,
   Lightbulb,
+  RotateCcw,
   Target,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
 import type {
   EssayHighlightKind,
@@ -33,6 +35,12 @@ interface HighlightMatch extends HighlightSource {
   end: number;
 }
 
+interface CorrectionItem extends Omit<HighlightSource, "tone"> {
+  tone: EssayHighlightKind;
+  explanation: string;
+  recovered?: boolean;
+}
+
 interface WritingFeedbackReportProps {
   submission: WritingSubmission;
   overview: WritingOverviewFeedback | null;
@@ -41,6 +49,8 @@ interface WritingFeedbackReportProps {
   improvement: WritingImprovementFeedback | null;
   overallScore: number | null;
   taskResponseLabel: string;
+  onRegenerateCorrections?: () => void;
+  isRegeneratingCorrections?: boolean;
 }
 
 const HIGHLIGHT_CLASSES: Record<HighlightTone, string> = {
@@ -59,28 +69,149 @@ const ACTIVE_HIGHLIGHT_CLASSES: Record<HighlightTone, string> = {
   topic: "ring-2 ring-violet-500 ring-offset-2",
 };
 
-function findMatches(essay: string, sources: HighlightSource[]): HighlightMatch[] {
+function rangesOverlap(start: number, end: number, matches: Array<{ start: number; end: number }>) {
+  return matches.some((match) => start < match.end && end > match.start);
+}
+
+function flexibleExcerptPattern(text: string) {
+  let pattern = "";
+  let previousWasWhitespace = false;
+
+  for (const character of text.trim()) {
+    if (/\s/.test(character)) {
+      if (!previousWasWhitespace) pattern += "\\s+";
+      previousWasWhitespace = true;
+      continue;
+    }
+
+    previousWasWhitespace = false;
+    if (character === "'" || character === "’" || character === "‘") {
+      pattern += "['‘’]";
+    } else if (character === '"' || character === "“" || character === "”") {
+      pattern += '["“”]';
+    } else if (character === "-" || character === "–" || character === "—") {
+      pattern += "[-–—]";
+    } else {
+      pattern += character.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+  }
+
+  return pattern;
+}
+
+function findExcerptRange(
+  essay: string,
+  excerpt: string,
+  matches: Array<{ start: number; end: number }> = [],
+) {
+  const needle = excerpt.trim();
+  if (!needle) return null;
+
   const lowerEssay = essay.toLocaleLowerCase();
+  const lowerNeedle = needle.toLocaleLowerCase();
+  let index = lowerEssay.indexOf(lowerNeedle);
+  while (index !== -1) {
+    const end = index + needle.length;
+    if (!rangesOverlap(index, end, matches)) return { start: index, end };
+    index = lowerEssay.indexOf(lowerNeedle, index + 1);
+  }
+
+  const pattern = flexibleExcerptPattern(needle);
+  if (!pattern) return null;
+  const matcher = new RegExp(pattern, "gi");
+  let result = matcher.exec(essay);
+  while (result) {
+    const start = result.index;
+    const end = start + result[0].length;
+    if (!rangesOverlap(start, end, matches)) return { start, end };
+    result = matcher.exec(essay);
+  }
+  return null;
+}
+
+function normalizeSentenceForComparison(text: string) {
+  return text
+    .toLocaleLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitEssaySentences(essay: string) {
+  return (essay.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function recoverCorrectionItems(
+  essay: string,
+  correctedEssay: string,
+  explanation: string,
+): CorrectionItem[] {
+  const originalSentences = splitEssaySentences(essay);
+  const correctedSentences = splitEssaySentences(correctedEssay);
+  const usedTexts = new Set<string>();
+  const items: CorrectionItem[] = [];
+
+  for (let index = 0; index < originalSentences.length; index += 1) {
+    const originalSentence = originalSentences[index];
+    const correctedSentence = correctedSentences[index] ?? "";
+    const normalized = normalizeSentenceForComparison(originalSentence);
+    if (!normalized || normalized === normalizeSentenceForComparison(correctedSentence)) continue;
+    if (usedTexts.has(normalized)) continue;
+
+    usedTexts.add(normalized);
+    items.push({
+      id: `correction-recovered-${index}`,
+      text: originalSentence,
+      tone: "error",
+      explanation,
+      recovered: true,
+    });
+  }
+
+  return items.slice(0, 6);
+}
+
+function buildCorrectionItems(
+  essay: string,
+  languageAnalysis: WritingLanguageFeedback | null,
+  fallbackExplanation: string,
+): CorrectionItem[] {
+  const highlights = languageAnalysis?.essayHighlights ?? [];
+  const mappableItems = highlights.flatMap((item, index) => (
+    findExcerptRange(essay, item.text)
+      ? [{
+        id: `correction-${index}`,
+        text: item.text,
+        tone: item.kind,
+        explanation: item.explanation,
+      } satisfies CorrectionItem]
+      : []
+  ));
+
+  const recoveredItems = recoverCorrectionItems(
+    essay,
+    languageAnalysis?.correctedEssay ?? "",
+    fallbackExplanation,
+  );
+
+  if (mappableItems.length === highlights.length || recoveredItems.length === 0) {
+    return mappableItems;
+  }
+
+  const remaining = Math.max(0, Math.min(6, Math.max(highlights.length, 3)) - mappableItems.length);
+  return [...mappableItems, ...recoveredItems.slice(0, remaining)];
+}
+
+function findMatches(essay: string, sources: HighlightSource[]): HighlightMatch[] {
   const matches: HighlightMatch[] = [];
 
   for (const source of sources) {
-    const needle = source.text.trim();
-    if (!needle) continue;
-
-    let from = 0;
-    let index = lowerEssay.indexOf(needle.toLocaleLowerCase(), from);
-    while (index !== -1) {
-      const end = index + needle.length;
-      const overlaps = matches.some(
-        (match) => index < match.end && end > match.start,
-      );
-      if (!overlaps) {
-        matches.push({ ...source, start: index, end });
-        break;
-      }
-      from = index + 1;
-      index = lowerEssay.indexOf(needle.toLocaleLowerCase(), from);
-    }
+    const range = findExcerptRange(essay, source.text, matches);
+    if (range) matches.push({ ...source, ...range });
   }
 
   return matches.sort((a, b) => a.start - b.start);
@@ -114,19 +245,32 @@ export function WritingFeedbackReport({
   improvement,
   overallScore,
   taskResponseLabel,
+  onRegenerateCorrections,
+  isRegeneratingCorrections = false,
 }: WritingFeedbackReportProps) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<ReportTab>("summary");
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
   const essayPanelRef = useRef<HTMLDivElement>(null);
 
+  const correctionItems = useMemo(
+    () => buildCorrectionItems(
+      submission.essay,
+      languageAnalysis,
+      t.feedback.correctionFallbackExplanation,
+    ),
+    [languageAnalysis, submission.essay, t.feedback.correctionFallbackExplanation],
+  );
+  const hasUnmappableCorrections = useMemo(
+    () => (languageAnalysis?.essayHighlights ?? []).some(
+      (item) => !findExcerptRange(submission.essay, item.text),
+    ),
+    [languageAnalysis?.essayHighlights, submission.essay],
+  );
+
   const sources = useMemo<HighlightSource[]>(() => {
     if (activeTab === "correction") {
-      return (languageAnalysis?.essayHighlights ?? []).map((item, index) => ({
-        id: `correction-${index}`,
-        text: item.text,
-        tone: item.kind,
-      }));
+      return correctionItems;
     }
     if (activeTab === "synonyms") {
       return (languageAnalysis?.synonymSuggestions ?? []).map((item, index) => ({
@@ -143,7 +287,7 @@ export function WritingFeedbackReport({
       }));
     }
     return [];
-  }, [activeTab, improvement?.topicPhrases, languageAnalysis?.essayHighlights, languageAnalysis?.synonymSuggestions]);
+  }, [activeTab, correctionItems, improvement?.topicPhrases, languageAnalysis?.synonymSuggestions]);
 
   const matches = useMemo(
     () => findMatches(submission.essay, sources),
@@ -255,9 +399,13 @@ export function WritingFeedbackReport({
               )}
               {activeTab === "correction" && (
                 <CorrectionsPanel
-                  languageAnalysis={languageAnalysis}
+                  corrections={correctionItems}
+                  keyChanges={languageAnalysis?.keyChanges ?? []}
                   selectedId={activeHighlightId}
                   onSelect={selectHighlight}
+                  needsRegeneration={hasUnmappableCorrections}
+                  onRegenerate={onRegenerateCorrections}
+                  isRegenerating={isRegeneratingCorrections}
                 />
               )}
               {activeTab === "synonyms" && (
@@ -416,16 +564,23 @@ function SummaryPanel({
 }
 
 function CorrectionsPanel({
-  languageAnalysis,
+  corrections,
+  keyChanges,
   selectedId,
   onSelect,
+  needsRegeneration,
+  onRegenerate,
+  isRegenerating,
 }: {
-  languageAnalysis: WritingLanguageFeedback | null;
+  corrections: CorrectionItem[];
+  keyChanges: string[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  needsRegeneration: boolean;
+  onRegenerate?: () => void;
+  isRegenerating: boolean;
 }) {
   const { t } = useI18n();
-  const highlights = languageAnalysis?.essayHighlights ?? [];
   const legend = [
     { kind: "error" as const, label: t.feedback.severeError },
     { kind: "suggestion" as const, label: t.feedback.suggestion },
@@ -446,22 +601,45 @@ function CorrectionsPanel({
         </div>
       </div>
 
-      {highlights.length > 0 ? (
-        highlights.map((item, index) => (
-          <button
-            key={`${item.text}-${index}`}
+      {corrections.some((item) => item.recovered) && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          {t.feedback.correctionFallbackNotice}
+        </p>
+      )}
+
+      {needsRegeneration && onRegenerate && (
+        <div className="rounded-xl border border-red-200 bg-red-50/70 p-3">
+          <p className="text-xs leading-5 text-red-900">{t.feedback.correctionRegenerateNotice}</p>
+          <Button
             type="button"
-            onClick={() => onSelect(`correction-${index}`)}
+            variant="outline"
+            size="xs"
+            className="mt-2 border-red-200 bg-white text-primary hover:bg-red-100"
+            onClick={onRegenerate}
+            disabled={isRegenerating}
+          >
+            <RotateCcw className={`size-3 ${isRegenerating ? "animate-spin" : ""}`} />
+            {t.feedback.correctionRegenerateAction}
+          </Button>
+        </div>
+      )}
+
+      {corrections.length > 0 ? (
+        corrections.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
             className={`w-full rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${
-              selectedId === `correction-${index}`
+              selectedId === item.id
                 ? "border-primary ring-2 ring-primary/20"
                 : "border-border bg-white"
             }`}
           >
             <div className="flex gap-3">
-              <StatusIcon kind={item.kind} />
+              <StatusIcon kind={item.tone} />
               <div className="min-w-0 flex-1">
-                <p className={`inline rounded px-1.5 py-0.5 text-sm font-semibold ${HIGHLIGHT_CLASSES[item.kind]}`}>
+                <p className={`inline rounded px-1.5 py-0.5 text-sm font-semibold ${HIGHLIGHT_CLASSES[item.tone]}`}>
                   {item.text}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-foreground/80">{item.explanation}</p>
@@ -469,9 +647,9 @@ function CorrectionsPanel({
             </div>
           </button>
         ))
-      ) : languageAnalysis?.keyChanges?.length ? (
+      ) : keyChanges.length ? (
         <div className="space-y-3">
-          {languageAnalysis.keyChanges.map((change, index) => (
+          {keyChanges.map((change, index) => (
             <div key={`${change}-${index}`} className="rounded-2xl border border-border bg-white p-4 text-sm leading-6 text-foreground/85">
               {change}
             </div>
