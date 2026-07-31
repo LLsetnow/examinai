@@ -734,34 +734,37 @@ export async function POST(req: Request) {
               },
             ];
 
-            const languageAssessment = await generateJsonObject({
-              model,
-              system: localizePrompt(WRITING_EXPERT_3_SCORE_PROMPT, feedbackLanguage),
-              messages: feedbackMessages,
-              maxOutputTokens: 2400,
-              schema: languageAssessmentSchema,
-            });
-
-            let annotations: z.infer<typeof languageAnnotationSchema> = {
+            // Rubric scoring and inline annotations share the same input and
+            // do not depend on each other, so run them concurrently to shorten
+            // the time the client waits on the language section.
+            const emptyAnnotations: z.infer<typeof languageAnnotationSchema> = {
               essayHighlights: [],
               synonymSuggestions: [],
             };
-            try {
-              annotations = await generateJsonObject({
+            const [languageAssessment, rawAnnotations] = await Promise.all([
+              generateJsonObject({
+                model,
+                system: localizePrompt(WRITING_EXPERT_3_SCORE_PROMPT, feedbackLanguage),
+                messages: feedbackMessages,
+                maxOutputTokens: 2400,
+                schema: languageAssessmentSchema,
+              }),
+              generateJsonObject({
                 model,
                 system: localizePrompt(WRITING_EXPERT_3_ANNOTATION_PROMPT, feedbackLanguage),
                 messages: feedbackMessages,
                 maxOutputTokens: 1800,
                 schema: languageAnnotationSchema,
-              });
-            } catch (error) {
-              // Inline annotations are optional. Keep reliable rubric scores
-              // even if this cosmetic enrichment cannot be parsed.
-              console.warn("Failed to generate language annotations:", error);
-            }
+              }).catch((error) => {
+                // Inline annotations are optional. Keep reliable rubric scores
+                // even if this cosmetic enrichment cannot be parsed.
+                console.warn("Failed to generate language annotations:", error);
+                return emptyAnnotations;
+              }),
+            ]);
 
-            annotations = mappableInlineAnnotations(
-              annotations,
+            const annotations = mappableInlineAnnotations(
+              rawAnnotations,
               essay,
               diffs,
               feedbackLanguage,
@@ -778,6 +781,10 @@ export async function POST(req: Request) {
             results.languageAnalysis = data;
           }).catch((err) => {
             failedSections.languageAnalysis = err instanceof Error ? err.message : "Language analysis failed";
+            // Server-side visibility for the section most prone to partial
+            // failure. Log only the section label and error message — never the
+            // student's essay or provider API keys.
+            console.error("Language analysis section failed:", failedSections.languageAnalysis);
             sendEvent("section_error", { section: "languageAnalysis", message: failedSections.languageAnalysis });
           })
         );
