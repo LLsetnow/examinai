@@ -133,7 +133,7 @@ export const translations: Record<Language, Translations> = {
   zh: {
     common: {
       language: "语言",
-      newEssay: "新建作文",
+      newEssay: "批改作文",
       retry: "重试",
       history: "历史记录",
       home: "返回首页",
@@ -261,7 +261,7 @@ export const translations: Record<Language, Translations> = {
   en: {
     common: {
       language: "Language",
-      newEssay: "New essay",
+      newEssay: "Assess essay",
       retry: "Retry",
       history: "History",
       home: "Home",
