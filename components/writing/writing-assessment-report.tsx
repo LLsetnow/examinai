@@ -1,6 +1,6 @@
 "use client";
 
-import { FileClock, FilePlus2, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Alert,
@@ -14,6 +14,7 @@ import { ApiSettingsButton } from "@/components/api-settings-dialog";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { WritingFeedbackReport } from "@/components/writing/writing-feedback-report";
 import { ReportExportActions } from "@/components/writing/report-export-actions";
+import { WritingTopNav } from "@/components/writing/writing-top-nav";
 import { useI18n } from "@/lib/i18n/provider";
 import type {
   WritingImprovementFeedback,
@@ -91,16 +92,19 @@ export function WritingAssessmentReport({
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <RobotIcon className="size-7 text-primary" />
-          <div>
-            <p className="font-[family-name:var(--font-brand)] text-lg font-bold tracking-tight text-foreground">
-              Examin<span className="text-primary">ai</span>
-            </p>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {t.writing.appSubtitle}
-            </p>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5">
+            <RobotIcon className="size-7 text-primary" />
+            <div className="hidden sm:block">
+              <p className="font-[family-name:var(--font-brand)] text-lg font-bold tracking-tight text-foreground">
+                Examin<span className="text-primary">ai</span>
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {t.writing.appSubtitle}
+              </p>
+            </div>
           </div>
+          <WritingTopNav active="report" onNewEssay={onNewEssay} onHistory={onHistory} />
         </div>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
@@ -115,16 +119,6 @@ export function WritingAssessmentReport({
             feedbackLanguage={feedbackLanguage}
             failedSections={assessment.failedSections}
           />
-          {onHistory && (
-            <Button variant="outline" size="sm" onClick={onHistory}>
-              <FileClock className="size-4" />
-              <span className="ml-1.5 hidden sm:inline">{t.common.history}</span>
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={onNewEssay}>
-            <FilePlus2 className="size-4" />
-            <span className="ml-1.5">{t.common.newEssay}</span>
-          </Button>
         </div>
       </header>
 
