@@ -42,6 +42,12 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          # setup-node@v5 defaults package-manager-cache to true, which detects
+          # pnpm from the lockfile and runs `pnpm` during this step to build the
+          # cache key. pnpm is provided by `corepack enable` in the next step, so
+          # it is not yet on PATH here and the step fails. Disable the auto cache;
+          # dependencies are installed fresh in the build step anyway.
+          package-manager-cache: false
 
       - name: Build Linux production artifact
         run: |
