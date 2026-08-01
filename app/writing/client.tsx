@@ -32,6 +32,7 @@ import {
   WritingAssessmentReport,
   type AssessmentData,
 } from "@/components/writing/writing-assessment-report";
+import { WritingTopNav } from "@/components/writing/writing-top-nav";
 import { loadProviderSettings, saveProviderSettings } from "@/lib/browser/provider-settings";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Language } from "@/lib/i18n/translations";
@@ -515,24 +516,27 @@ export default function WritingPageClient() {
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top_right,_rgba(254,202,202,0.7),transparent_38%),linear-gradient(135deg,#fffafa_0%,#ffffff_55%,#fff7ed_100%)]">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
-        <div className="flex items-center gap-2.5">
-          <RobotIcon className="size-8 text-primary" />
-          <div>
-            <p className="font-[family-name:var(--font-brand)] text-xl font-bold tracking-tight text-foreground">
-              Examin<span className="text-primary">ai</span>
-            </p>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              {t.writing.appSubtitle}
-            </p>
+        <div className="flex items-center gap-3 sm:gap-5">
+          <div className="flex items-center gap-2.5">
+            <RobotIcon className="size-8 text-primary" />
+            <div className="hidden sm:block">
+              <p className="font-[family-name:var(--font-brand)] text-xl font-bold tracking-tight text-foreground">
+                Examin<span className="text-primary">ai</span>
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                {t.writing.appSubtitle}
+              </p>
+            </div>
           </div>
+          <WritingTopNav
+            active="form"
+            onNewEssay={startNewEssay}
+            onHistory={() => void showHistory()}
+          />
         </div>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <ApiSettingsButton value={providerSettings} onChange={handleProviderSettingsChange} />
-          <Button variant="outline" size="sm" onClick={() => void showHistory()}>
-            <FileClock className="size-4" />
-            <span className="ml-1.5 hidden sm:inline">{t.common.history}</span>
-          </Button>
         </div>
       </header>
 
@@ -810,30 +814,23 @@ function HistoryRecordsPage({
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top_right,_rgba(254,202,202,0.7),transparent_38%),linear-gradient(135deg,#fffafa_0%,#ffffff_55%,#fff7ed_100%)]">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
-        <button
-          type="button"
-          onClick={onNewEssay}
-          aria-label={t.common.home}
-          title={t.common.home}
-          className="flex items-center gap-2.5 rounded-xl text-left transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-        >
-          <RobotIcon className="size-8 text-primary" />
-          <div>
-            <p className="font-[family-name:var(--font-brand)] text-xl font-bold tracking-tight text-foreground">
-              Examin<span className="text-primary">ai</span>
-            </p>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              {t.writing.appSubtitle}
-            </p>
+        <div className="flex items-center gap-3 sm:gap-5">
+          <div className="flex items-center gap-2.5">
+            <RobotIcon className="size-8 text-primary" />
+            <div className="hidden sm:block">
+              <p className="font-[family-name:var(--font-brand)] text-xl font-bold tracking-tight text-foreground">
+                Examin<span className="text-primary">ai</span>
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                {t.writing.appSubtitle}
+              </p>
+            </div>
           </div>
-        </button>
+          <WritingTopNav active="history" onNewEssay={onNewEssay} onHistory={onReload} />
+        </div>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <ApiSettingsButton value={providerSettings} onChange={onProviderSettingsChange} />
-          <Button variant="outline" size="sm" onClick={onNewEssay}>
-            <PenLine className="size-4" />
-            <span className="ml-1.5 hidden sm:inline">{t.common.newEssay}</span>
-          </Button>
         </div>
       </header>
 
