@@ -405,10 +405,26 @@ function formatDiffsForPrompt(diffs: SentenceDiff[]): string {
     .join("\n\n");
 }
 
+/**
+ * Normalise smart quotes, dash variants, whitespace and case so a model excerpt
+ * that only differs cosmetically from the essay still counts as present. The
+ * report locates highlights with its own flexible matcher, so keeping these
+ * near-verbatim excerpts avoids falling back to a generic per-sentence notice.
+ */
+function normalizeExcerptForMatch(value: string) {
+  return value
+    .toLocaleLowerCase()
+    .replace(/[‘’′'`]/g, "'")
+    .replace(/[“”″"]/g, '"')
+    .replace(/[‐-―−]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function isExactOriginalExcerpt(essay: string, excerpt: string) {
-  const trimmedExcerpt = excerpt.trim();
-  return Boolean(trimmedExcerpt)
-    && essay.toLocaleLowerCase().includes(trimmedExcerpt.toLocaleLowerCase());
+  const normalizedExcerpt = normalizeExcerptForMatch(excerpt);
+  return Boolean(normalizedExcerpt)
+    && normalizeExcerptForMatch(essay).includes(normalizedExcerpt);
 }
 
 function mappableInlineAnnotations(
@@ -516,33 +532,52 @@ async function generateJsonObject<S extends z.ZodType>(config: {
   messages: NonNullable<Parameters<typeof generateText>[0]["messages"]>;
   maxOutputTokens: number;
   schema: S;
+  /**
+   * Optional semantic check for values that pass the schema but are clearly
+   * wrong (e.g. an all-zero band set for a non-empty essay). Returning false
+   * triggers a fresh regeneration rather than accepting the bad result.
+   */
+  validate?: (value: z.infer<S>) => boolean;
 }): Promise<z.infer<S>> {
   const system = `${config.system}\n\nReturn exactly one valid JSON object. Do not use Markdown fences or add commentary outside the JSON.`;
-  const { text } = await generateText({
-    model: config.model,
-    system,
-    messages: config.messages,
-    maxOutputTokens: config.maxOutputTokens,
-    temperature: 0,
-    topP: 1,
-  });
 
-  try {
-    return config.schema.parse(parseJsonObject(text));
-  } catch {
-    // Keep the assessment usable when an OpenAI-compatible endpoint replies
-    // with prose despite the JSON-only instruction. A focused repair turn is
-    // more reliable than failing an entire assessment section.
-    const { text: repairedText } = await generateText({
+  // Produce one schema-valid object, repairing an ill-formed reply if needed.
+  const generateOnce = async (): Promise<z.infer<S>> => {
+    const { text } = await generateText({
       model: config.model,
-      system: `${system}\n\nYou are repairing a prior response. Preserve its meaning, but output only a valid JSON object matching the requested fields.`,
-      prompt: `Prior response to repair:\n${text}`,
+      system,
+      messages: config.messages,
       maxOutputTokens: config.maxOutputTokens,
       temperature: 0,
       topP: 1,
     });
-    return config.schema.parse(parseJsonObject(repairedText));
-  }
+    try {
+      return config.schema.parse(parseJsonObject(text));
+    } catch {
+      // Keep the assessment usable when an OpenAI-compatible endpoint replies
+      // with prose despite the JSON-only instruction. A focused repair turn is
+      // more reliable than failing an entire assessment section.
+      const { text: repairedText } = await generateText({
+        model: config.model,
+        system: `${system}\n\nYou are repairing a prior response. Preserve its meaning, but output only a valid JSON object matching the requested fields.`,
+        prompt: `Prior response to repair:\n${text}`,
+        maxOutputTokens: config.maxOutputTokens,
+        temperature: 0,
+        topP: 1,
+      });
+      return config.schema.parse(parseJsonObject(repairedText));
+    }
+  };
+
+  const result = await generateOnce();
+  if (!config.validate || config.validate(result)) return result;
+
+  // The result is schema-valid but implausible (seen with some models emitting
+  // all-zero band scores). Regenerate from scratch instead of a meaning-
+  // preserving repair, which would simply reproduce the bad values.
+  const retried = await generateOnce();
+  if (config.validate(retried)) return retried;
+  throw new Error("The model returned implausible scores.");
 }
 
 /**
@@ -560,6 +595,7 @@ async function streamExpert<S extends z.ZodType>(config: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   normalize: (raw: any, isFinal?: boolean) => any;
   sendEvent: (type: string, data: unknown) => void;
+  validate?: (value: z.infer<S>) => boolean;
 }) {
   const raw = await generateJsonObject({
     model: config.model,
@@ -567,6 +603,7 @@ async function streamExpert<S extends z.ZodType>(config: {
     messages: config.messages,
     maxOutputTokens: config.maxOutputTokens,
     schema: config.schema,
+    validate: config.validate,
   });
 
   const finalData = config.normalize(raw, true);
@@ -698,6 +735,9 @@ export async function POST(req: Request) {
               eventName: "scoring",
               normalize: normalizeScoring,
               sendEvent,
+              // A submitted, non-empty essay cannot be Band 0 (that band is for
+              // a blank/absent answer). Reject all-zero glitches and regenerate.
+              validate: (v) => v.taskResponseScore >= 1 && v.coherenceScore >= 1,
             })
           ).then((data) => {
             results.scoring = data;
@@ -752,6 +792,9 @@ export async function POST(req: Request) {
                 messages: feedbackMessages,
                 maxOutputTokens: 2400,
                 schema: languageAssessmentSchema,
+                // Guard against the intermittent all-zero band glitch: a real
+                // essay is never Band 0 for lexis/grammar, so regenerate instead.
+                validate: (v) => v.lexicalResourceScore >= 1 && v.grammaticalRangeScore >= 1,
               }),
               generateJsonObject({
                 model,
