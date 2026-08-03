@@ -770,14 +770,20 @@ export async function POST(req: Request) {
             // Stage 1: Generate corrected essay
             const correction = await generateJsonObject({
               model,
+              // The corrected essay is the whole essay rewritten. A reasoning
+              // model (deepseek-v4-pro) spends most of the budget thinking, so a
+              // tight limit is exhausted before it emits the essay JSON and the
+              // field comes back empty — which then falls back to the original,
+              // producing no diff and therefore no sentence corrections. Give it
+              // ample room, and regenerate if it still returns nothing.
               system: localizePrompt(WRITING_EXPERT_3_CORRECTION_PROMPT, feedbackLanguage),
               messages,
-              maxOutputTokens: 2000,
+              maxOutputTokens: 8192,
               schema: languageCorrectionSchema,
+              validate: (v) => v.correctedEssay.trim().length > 0,
             });
-            // A few compatible-model retries return an empty field when no
-            // corrections are needed. The original essay is the only safe
-            // fallback because the report must always display a full text.
+            // If the correction still comes back empty, the original essay is the
+            // only safe fallback because the report must always show a full text.
             const correctedEssay = correction.correctedEssay.trim() || essay;
             sendEvent("languageAnalysis", normalizeLanguageAnalysis({ correctedEssay }));
 
