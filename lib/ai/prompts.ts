@@ -230,6 +230,19 @@ Rules:
 - Use \\n\\n for paragraph breaks
 - Accurately reflect the data/image from the question`;
 
+// Vision extraction for an uploaded Task 1 image. The prompt adapts to the
+// visual type so process diagrams and maps/plans are read on their own terms
+// instead of being forced through the data-chart (series/year/trend) template.
+export const TASK1_CHART_EXTRACTION_PROMPT = `Extract factual notes for an IELTS Academic Writing Task 1 assessor.
+
+First state the visual type you see: bar chart, line graph, pie chart, table, process diagram, map/plan, or a combination. Then extract only the facts that matter for that type:
+
+- Data charts and tables (bar, line, pie, table): transcribe every clearly readable data point by series and category/year. Note the title, units, main trends, crossings, extremes (highest/lowest), and any projections. Explicitly state any rise-then-fall or fall-then-rise pattern; never call a series continuously rising or falling if it changes direction.
+- Process diagram: list the stages STRICTLY IN ORDER as a numbered sequence. For each stage give the action and any named inputs, outputs, materials or equipment. State the start and end points, the total number of stages, and whether the process is cyclical (loops back to the start) or linear.
+- Map / plan: describe the layout. If two or more time points are shown, state what changed between them (structures added, removed, relocated, expanded or replaced) and give relative positions and directions (north/south, next to, opposite).
+
+Rules: report only what is clearly readable; do not invent values, labels or stages; do not grade the essay. Write concise notes in English.`;
+
 export const SPEAKING_FIRST_QUESTION_PROMPT = `You are an IELTS Speaking examiner. The session is about to begin and the student has not spoken yet.
 
 Session questions:
