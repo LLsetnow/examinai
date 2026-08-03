@@ -111,6 +111,12 @@ export interface Translations {
     assessmentFailed: string;
     assessmentPartialError: string;
     assessmentIncomplete: string;
+    assessmentProgressTitle: string;
+    assessmentProgressPending: string;
+    assessmentProgressComplete: string;
+    assessmentProgressScoring: string;
+    assessmentProgressLanguage: string;
+    assessmentProgressImprovement: string;
     synonyms: string;
     topicPhrases: string;
     severeError: string;
@@ -241,6 +247,12 @@ export const translations: Record<Language, Translations> = {
       assessmentFailed: "批改失败",
       assessmentPartialError: "部分反馈暂时未能生成。",
       assessmentIncomplete: "评分在完成前中断，部分结果未生成，请重试。",
+      assessmentProgressTitle: "批改进度",
+      assessmentProgressPending: "未完成",
+      assessmentProgressComplete: "已完成",
+      assessmentProgressScoring: "任务与结构评分",
+      assessmentProgressLanguage: "词汇、语法与原句批改",
+      assessmentProgressImprovement: "改进建议",
       synonyms: "近义词",
       topicPhrases: "相关话题",
       severeError: "严重错误或语法问题",
@@ -369,6 +381,12 @@ export const translations: Record<Language, Translations> = {
       assessmentFailed: "Assessment failed",
       assessmentPartialError: "Some feedback could not be generated.",
       assessmentIncomplete: "The assessment ended before finishing, so some results are missing. Please retry.",
+      assessmentProgressTitle: "Assessment progress",
+      assessmentProgressPending: "Not complete",
+      assessmentProgressComplete: "Complete",
+      assessmentProgressScoring: "Task & structure scoring",
+      assessmentProgressLanguage: "Language & sentence corrections",
+      assessmentProgressImprovement: "Improvement guidance",
       synonyms: "Synonyms",
       topicPhrases: "Topic phrases",
       severeError: "Serious error or grammar issue",

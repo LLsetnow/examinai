@@ -51,6 +51,7 @@ interface WritingFeedbackReportProps {
   taskResponseLabel: string;
   /** Whether the assessment stream is still in progress (controls loaders). */
   isStreaming?: boolean;
+  assessmentProgress?: ReactNode;
   onRegenerateCorrections?: () => void;
   isRegeneratingCorrections?: boolean;
 }
@@ -248,6 +249,7 @@ export function WritingFeedbackReport({
   overallScore,
   taskResponseLabel,
   isStreaming = false,
+  assessmentProgress,
   onRegenerateCorrections,
   isRegeneratingCorrections = false,
 }: WritingFeedbackReportProps) {
@@ -399,6 +401,7 @@ export function WritingFeedbackReport({
                   overallScore={overallScore}
                   taskResponseLabel={taskResponseLabel}
                   isStreaming={isStreaming}
+                  assessmentProgress={assessmentProgress}
                 />
               )}
               {activeTab === "correction" && (
@@ -473,6 +476,7 @@ function SummaryPanel({
   overallScore,
   taskResponseLabel,
   isStreaming,
+  assessmentProgress,
 }: {
   overview: WritingOverviewFeedback | null;
   scoring: WritingScoringFeedback | null;
@@ -480,13 +484,15 @@ function SummaryPanel({
   overallScore: number | null;
   taskResponseLabel: string;
   isStreaming: boolean;
+  assessmentProgress?: ReactNode;
 }) {
   const { t } = useI18n();
+  const taskResponseCode = taskResponseLabel === t.feedback.taskAchievement ? "TA" : "TR";
   const criteria = [
-    { label: taskResponseLabel, score: scoring?.taskResponseScore ?? null },
-    { label: t.feedback.coherenceCohesion, score: scoring?.coherenceScore ?? null },
-    { label: t.feedback.lexicalResource, score: languageAnalysis?.lexicalResourceScore ?? null },
-    { label: t.feedback.grammaticalRange, score: languageAnalysis?.grammaticalRangeScore ?? null },
+    { code: taskResponseCode, fullLabel: taskResponseLabel, score: scoring?.taskResponseScore ?? null },
+    { code: "CC", fullLabel: t.feedback.coherenceCohesion, score: scoring?.coherenceScore ?? null },
+    { code: "LR", fullLabel: t.feedback.lexicalResource, score: languageAnalysis?.lexicalResourceScore ?? null },
+    { code: "GRA", fullLabel: t.feedback.grammaticalRange, score: languageAnalysis?.grammaticalRangeScore ?? null },
   ];
 
   return (
@@ -505,9 +511,9 @@ function SummaryPanel({
         </div>
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {criteria.map((criterion) => (
-            <div key={criterion.label} className="rounded-xl bg-white/12 px-3 py-2.5 backdrop-blur-sm">
+            <div key={criterion.code} className="rounded-xl bg-white/12 px-3 py-2.5 backdrop-blur-sm">
               <p className="min-h-8 text-[10px] font-medium leading-4 text-white/70">
-                {criterion.label}
+                {criterion.code}
               </p>
               <p className="mt-1 font-[family-name:var(--font-heading)] text-xl font-bold tabular-nums">
                 {criterion.score ?? "—"}
@@ -538,28 +544,35 @@ function SummaryPanel({
           </div>
         </div>
       ) : isStreaming ? (
-        <LoadingPanel label={t.feedback.waitingForFeedback} />
+        <LoadingPanel
+          label={t.feedback.waitingForFeedback}
+          progress={assessmentProgress}
+        />
       ) : null}
 
       {(scoring || languageAnalysis) && (
         <div className="grid gap-3 sm:grid-cols-2">
           <CriterionCard
-            label={taskResponseLabel}
+            label={criteria[0].code}
+            fullLabel={criteria[0].fullLabel}
             score={scoring?.taskResponseScore ?? null}
             summary={scoring?.taskResponseHighLevel ?? ""}
           />
           <CriterionCard
-            label={t.feedback.coherenceCohesion}
+            label={criteria[1].code}
+            fullLabel={criteria[1].fullLabel}
             score={scoring?.coherenceScore ?? null}
             summary={scoring?.coherenceHighLevel ?? ""}
           />
           <CriterionCard
-            label={t.feedback.lexicalResource}
+            label={criteria[2].code}
+            fullLabel={criteria[2].fullLabel}
             score={languageAnalysis?.lexicalResourceScore ?? null}
             summary={languageAnalysis?.lexicalResourceHighLevel ?? ""}
           />
           <CriterionCard
-            label={t.feedback.grammaticalRange}
+            label={criteria[3].code}
+            fullLabel={criteria[3].fullLabel}
             score={languageAnalysis?.grammaticalRangeScore ?? null}
             summary={languageAnalysis?.grammaticalRangeHighLevel ?? ""}
           />
@@ -788,17 +801,25 @@ function FeedbackList({
 
 function CriterionCard({
   label,
+  fullLabel,
   score,
   summary,
 }: {
   label: string;
+  fullLabel: string;
   score: number | null;
   summary: string;
 }) {
   return (
     <div className="rounded-2xl border border-border bg-white p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold leading-5 text-foreground/80">{label}</p>
+        <p
+          className="text-xs font-semibold leading-5 text-foreground/80"
+          title={fullLabel}
+          aria-label={fullLabel}
+        >
+          {label}
+        </p>
         <ScoreValue score={score} />
       </div>
       {summary && <p className="mt-2 text-xs leading-5 text-muted-foreground">{summary}</p>}
@@ -806,11 +827,20 @@ function CriterionCard({
   );
 }
 
-function LoadingPanel({ label }: { label: string }) {
+function LoadingPanel({
+  label,
+  progress,
+}: {
+  label: string;
+  progress?: ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">
-      <span className="size-4 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
-      {label}
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-muted-foreground">
+      <div className="flex items-center gap-3 text-sm">
+        <span className="size-4 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
+        {label}
+      </div>
+      {progress}
     </div>
   );
 }

@@ -347,8 +347,15 @@ export default function WritingPageClient() {
     if (sections) {
       setAssessment((current) => {
         const failedSections = { ...current.failedSections };
-        for (const section of sections) delete failedSections[section];
-        return { ...current, failedSections, done: false, incomplete: false };
+        const next = { ...current, failedSections, done: false, incomplete: false };
+        for (const section of sections) {
+          delete failedSections[section];
+          if (section === "overview") next.overview = null;
+          if (section === "scoring") next.scoring = null;
+          if (section === "languageAnalysis") next.languageAnalysis = null;
+          if (section === "improvement") next.improvement = null;
+        }
+        return next;
       });
     }
 
