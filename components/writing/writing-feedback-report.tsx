@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
+import { computeSentenceDiffs } from "@/lib/writing/correction-diff";
 import type {
   EssayHighlightKind,
   WritingImprovementFeedback,
@@ -141,38 +142,30 @@ function normalizeSentenceForComparison(text: string) {
     .trim();
 }
 
-function splitEssaySentences(essay: string) {
-  return (essay.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [])
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-}
-
 function recoverCorrectionItems(
   essay: string,
   correctedEssay: string,
   explanation: string,
 ): CorrectionItem[] {
-  const originalSentences = splitEssaySentences(essay);
-  const correctedSentences = splitEssaySentences(correctedEssay);
   const usedTexts = new Set<string>();
   const items: CorrectionItem[] = [];
 
-  for (let index = 0; index < originalSentences.length; index += 1) {
-    const originalSentence = originalSentences[index];
-    const correctedSentence = correctedSentences[index] ?? "";
-    const normalized = normalizeSentenceForComparison(originalSentence);
-    if (!normalized || normalized === normalizeSentenceForComparison(correctedSentence)) continue;
-    if (usedTexts.has(normalized)) continue;
+  const diffs = computeSentenceDiffs(essay, correctedEssay);
+  diffs.forEach((diff, sentenceIndex) => {
+    diff.removedExcerpts.forEach((text, excerptIndex) => {
+      const normalized = normalizeSentenceForComparison(text);
+      if (!normalized || usedTexts.has(normalized)) return;
 
-    usedTexts.add(normalized);
-    items.push({
-      id: `correction-recovered-${index}`,
-      text: originalSentence,
-      tone: "error",
-      explanation,
-      recovered: true,
+      usedTexts.add(normalized);
+      items.push({
+        id: `correction-recovered-${sentenceIndex}-${excerptIndex}`,
+        text,
+        tone: "error",
+        explanation,
+        recovered: true,
+      });
     });
-  }
+  });
 
   return items.slice(0, 6);
 }
@@ -199,6 +192,10 @@ function buildCorrectionItems(
     languageAnalysis?.correctedEssay ?? "",
     fallbackExplanation,
   );
+
+  if (highlights.length === 0) {
+    return recoveredItems;
+  }
 
   if (mappableItems.length === highlights.length || recoveredItems.length === 0) {
     return mappableItems;
