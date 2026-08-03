@@ -13,9 +13,12 @@ import {
   WRITING_EXPERT_3_SCORE_PROMPT,
   WRITING_EXPERT_4_TASK1_PROMPT,
   WRITING_EXPERT_4_TASK2_PROMPT,
+  TASK1_CHART_EXTRACTION_PROMPT,
 } from "@/lib/ai/prompts";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
+
+const BACKGROUND_JOB_ID_HEADER = "x-examinai-background-job-id";
 
 type FeedbackLanguage = "zh" | "en";
 
@@ -94,7 +97,7 @@ async function analyseTask1Chart(imageUrl: string, providerSettings?: AiProvider
         {
           role: "user",
           content: [
-            { type: "text", text: "Extract factual notes for an IELTS Task 1 assessor. First transcribe every clearly readable data point by series and year. Then identify title, units, main trends, crossings, extremes, and projections. Explicitly state any rise-then-fall or fall-then-rise pattern; never call a series continuously rising or falling if it changes direction. Do not grade the essay and do not invent unreadable values. Write concise notes in English." },
+            { type: "text", text: TASK1_CHART_EXTRACTION_PROMPT },
             { type: "image_url", image_url: { url: zhipuImageInput(imageUrl) } },
           ],
         },
@@ -626,6 +629,7 @@ export async function POST(req: Request) {
   const feedbackLanguage: FeedbackLanguage = requestedLanguage === "en" ? "en" : "zh";
   const parsedQuestionSource = parseCambridgeQuestionSource(questionSource);
   const parsedProviderSettings = parseProviderSettings(providerSettings);
+  const backgroundJobId = req.headers.get(BACKGROUND_JOB_ID_HEADER);
 
   // Which sections to run — default to all four
   const sectionsToRun: Set<string> = requestedSections
@@ -691,6 +695,20 @@ export async function POST(req: Request) {
         );
       }
 
+      // Keep the SSE connection alive during slow model calls. A long section
+      // (language analysis, improvement) can leave the stream silent for longer
+      // than Nginx's proxy_read_timeout (180s), which closes the client
+      // connection mid-assessment and leaves the report partial even though the
+      // server finishes. This comment line is ignored by EventSource clients and
+      // self-clears once the client disconnects (enqueue throws).
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(": keepalive\n\n"));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 15000);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const results: Record<string, any> = {};
       const failedSections: Record<string, string> = {};
@@ -755,14 +773,20 @@ export async function POST(req: Request) {
             // Stage 1: Generate corrected essay
             const correction = await generateJsonObject({
               model,
+              // The corrected essay is the whole essay rewritten. A reasoning
+              // model (deepseek-v4-pro) spends most of the budget thinking, so a
+              // tight limit is exhausted before it emits the essay JSON and the
+              // field comes back empty — which then falls back to the original,
+              // producing no diff and therefore no sentence corrections. Give it
+              // ample room, and regenerate if it still returns nothing.
               system: localizePrompt(WRITING_EXPERT_3_CORRECTION_PROMPT, feedbackLanguage),
               messages,
-              maxOutputTokens: 2000,
+              maxOutputTokens: 8192,
               schema: languageCorrectionSchema,
+              validate: (v) => v.correctedEssay.trim().length > 0,
             });
-            // A few compatible-model retries return an empty field when no
-            // corrections are needed. The original essay is the only safe
-            // fallback because the report must always display a full text.
+            // If the correction still comes back empty, the original essay is the
+            // only safe fallback because the report must always show a full text.
             const correctedEssay = correction.correctedEssay.trim() || essay;
             sendEvent("languageAnalysis", normalizeLanguageAnalysis({ correctedEssay }));
 
@@ -886,11 +910,12 @@ export async function POST(req: Request) {
           },
           feedback: results,
           failedSections,
-        });
+        }, backgroundJobId && /^[a-zA-Z0-9-]{16,100}$/.test(backgroundJobId) ? backgroundJobId : undefined);
       } catch (error) {
         console.error("Failed to save local assessment history:", error);
       }
 
+      clearInterval(heartbeat);
       sendEvent("done", {});
 
       controller.close();

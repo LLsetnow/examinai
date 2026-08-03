@@ -122,6 +122,12 @@ export function WritingAssessmentReport({
         </div>
       </header>
 
+      {isStreaming ? (
+        <div className="shrink-0 border-b border-amber-100 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 sm:px-6">
+          {t.feedback.backgroundAssessmentNotice}
+        </div>
+      ) : null}
+
       {failedSections.length > 0 && !hasAnyFeedback ? (
         <div className="flex min-h-0 flex-1 items-center justify-center p-6">
           <Alert variant="destructive" className="mx-auto max-w-2xl">
