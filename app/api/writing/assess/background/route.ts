@@ -5,6 +5,7 @@ import {
   isBackgroundJobActive,
   startBackgroundJob,
 } from "@/lib/background-assessment-jobs";
+import { POST as assessWriting } from "@/app/api/writing/assess/route";
 import {
   getAssessmentHistory,
   type AssessmentHistoryEntry,
@@ -77,15 +78,17 @@ async function runBackgroundAssessment(
   payload: Record<string, unknown>,
 ) {
   try {
-    const assessUrl = new URL("/api/writing/assess", request.url);
-    const response = await fetch(assessUrl, {
+    // Call the existing route handler directly. Going through the public URL
+    // from the production server can fail because of DNS, TLS, or proxy
+    // hairpinning, even though the browser can reach the same URL.
+    const response = await assessWriting(new Request(request.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         [BACKGROUND_JOB_ID_HEADER]: jobId,
       },
       body: JSON.stringify(payload),
-    });
+    }));
 
     if (!response.ok) {
       const body = await response.json().catch(() => null) as { error?: string } | null;
