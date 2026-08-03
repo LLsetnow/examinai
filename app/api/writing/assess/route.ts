@@ -4,6 +4,7 @@ import { chatModel, zhipuVisionConfig } from "@/lib/ai/models";
 import { formatChartFactsForAssessment, getCambridgeChartFacts } from "@/lib/question-bank/chart-facts";
 import { resolveCambridgeQuestion } from "@/lib/question-bank/cambridge";
 import { saveAssessmentHistory } from "@/lib/storage/assessment-history";
+import { computeSentenceDiffs, type SentenceDiff } from "@/lib/writing/correction-diff";
 import type { AiProviderSettings, CambridgeQuestionSource } from "@/lib/types";
 import {
   WRITING_EXPERT_1_PROMPT,
@@ -317,84 +318,6 @@ function buildScoreAlignedOverview(
   };
 }
 
-// --- Sentence-level diff for two-stage Expert 3 pipeline ---
-
-interface SentenceDiff {
-  sentence: string;
-  removed: string;
-  added: string;
-}
-
-function splitSentences(text: string): string[] {
-  return text
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function computeSentenceDiffs(
-  original: string,
-  corrected: string,
-): SentenceDiff[] {
-  const origSentences = splitSentences(original);
-  const corrSentences = splitSentences(corrected);
-  const diffs: SentenceDiff[] = [];
-
-  // Use LCS on words within aligned sentences
-  const len = Math.max(origSentences.length, corrSentences.length);
-  for (let i = 0; i < len; i++) {
-    const origSent = origSentences[i] ?? "";
-    const corrSent = corrSentences[i] ?? "";
-    if (origSent === corrSent) continue;
-
-    const origWords = origSent.split(/\s+/).filter(Boolean);
-    const corrWords = corrSent.split(/\s+/).filter(Boolean);
-
-    // LCS to find common words
-    const n = origWords.length;
-    const m = corrWords.length;
-    const dp: number[][] = Array.from({ length: n + 1 }, () =>
-      new Array(m + 1).fill(0),
-    );
-    for (let a = 1; a <= n; a++) {
-      for (let b = 1; b <= m; b++) {
-        dp[a][b] =
-          origWords[a - 1] === corrWords[b - 1]
-            ? dp[a - 1][b - 1] + 1
-            : Math.max(dp[a - 1][b], dp[a][b - 1]);
-      }
-    }
-
-    // Backtrack to find removed/added words
-    const removed: string[] = [];
-    const added: string[] = [];
-    let a = n,
-      b = m;
-    while (a > 0 || b > 0) {
-      if (a > 0 && b > 0 && origWords[a - 1] === corrWords[b - 1]) {
-        a--;
-        b--;
-      } else if (b > 0 && (a === 0 || dp[a][b - 1] >= dp[a - 1][b])) {
-        added.unshift(corrWords[b - 1]);
-        b--;
-      } else {
-        removed.unshift(origWords[a - 1]);
-        a--;
-      }
-    }
-
-    if (removed.length > 0 || added.length > 0) {
-      diffs.push({
-        sentence: origSent || corrSent,
-        removed: removed.join(" "),
-        added: added.join(" "),
-      });
-    }
-  }
-
-  return diffs;
-}
-
 function formatDiffsForPrompt(diffs: SentenceDiff[]): string {
   if (diffs.length === 0) return "No changes were made.";
   return diffs
@@ -457,16 +380,15 @@ function mappableInlineAnnotations(
   }
 
   const fallbackExplanation = feedbackLanguage === "zh"
-    ? "该句与校正版存在修改，已在考生原文中标记。"
-    : "This sentence differs from the corrected essay and has been marked in the original.";
+    ? "该片段与校正版存在修改，已在考生原文中标记。"
+    : "This excerpt differs from the corrected essay and has been marked in the original.";
   const fallbackTexts = new Set<string>();
-  const fallbackHighlights = diffs.flatMap((diff) => {
-    const text = diff.sentence.trim();
+  const fallbackHighlights = diffs.flatMap((diff) => diff.removedExcerpts.map((text) => {
     const key = text.toLocaleLowerCase();
-    if (!isExactOriginalExcerpt(essay, text) || fallbackTexts.has(key)) return [];
+    if (!isExactOriginalExcerpt(essay, text) || fallbackTexts.has(key)) return null;
     fallbackTexts.add(key);
-    return [{ text, kind: "error" as const, explanation: fallbackExplanation }];
-  }).slice(0, 6);
+    return { text, kind: "error" as const, explanation: fallbackExplanation };
+  }).filter((item): item is { text: string; kind: "error"; explanation: string } => item !== null)).slice(0, 6);
 
   return { essayHighlights: fallbackHighlights, synonymSuggestions };
 }
