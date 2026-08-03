@@ -107,6 +107,7 @@ export interface Translations {
     original: string;
     waitingForFeedback: string;
     backgroundAssessmentNotice: string;
+    backgroundAssessmentNoticeClose: string;
     overall: string;
     bandScore: string;
     assessmentLabel: string;
@@ -247,6 +248,7 @@ export const translations: Record<Language, Translations> = {
       original: "考生原文",
       waitingForFeedback: "正在生成反馈…",
       backgroundAssessmentNotice: "即使刷新或离开页面，批改也会在后台继续；完成后会自动保存到历史记录。",
+      backgroundAssessmentNoticeClose: "关闭后台批改提示",
       overall: "综合分数",
       bandScore: "雅思参考分数",
       assessmentLabel: "AI 评分",
@@ -385,6 +387,7 @@ export const translations: Record<Language, Translations> = {
       original: "Original essay",
       waitingForFeedback: "Generating feedback…",
       backgroundAssessmentNotice: "The assessment continues in the background if you refresh or leave; the completed report will be saved to history.",
+      backgroundAssessmentNoticeClose: "Close background assessment notice",
       overall: "Overall score",
       bandScore: "IELTS reference band",
       assessmentLabel: "AI assessment",
