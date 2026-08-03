@@ -176,6 +176,11 @@ export function WritingAssessmentReport({
               overallScore={overallScore}
               taskResponseLabel={taskResponseLabel}
               isStreaming={isStreaming}
+              assessmentProgress={
+                !assessment.done
+                  ? <AssessmentProgress assessment={assessment} inline />
+                  : undefined
+              }
               onRegenerateCorrections={onRegenerateCorrections}
               isRegeneratingCorrections={isRegeneratingCorrections}
             />
@@ -184,4 +189,73 @@ export function WritingAssessmentReport({
       )}
     </div>
   );
+}
+
+function AssessmentProgress({
+  assessment,
+  inline = false,
+}: {
+  assessment: AssessmentData;
+  inline?: boolean;
+}) {
+  const { t } = useI18n();
+  const steps = [
+    { id: "scoring", label: t.feedback.assessmentProgressScoring },
+    { id: "languageAnalysis", label: t.feedback.assessmentProgressLanguage },
+    { id: "improvement", label: t.feedback.assessmentProgressImprovement },
+  ] as const;
+
+  return (
+    <div
+      className={inline
+        ? "flex min-w-0 flex-wrap items-center justify-end gap-x-4 gap-y-2"
+        : "shrink-0 border-b border-red-100 bg-red-50/45 px-4 py-3 sm:px-6"}
+      role="status"
+      aria-live="polite"
+    >
+      <p className={inline
+        ? "shrink-0 text-xs font-semibold text-primary"
+        : "shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary"}
+      >
+        {t.feedback.assessmentProgressTitle}
+      </p>
+      <ol className={inline
+        ? "flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5"
+        : "flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2"}
+      >
+        {steps.map((step) => {
+          const complete = isAssessmentProgressStepComplete(step.id, assessment);
+          return (
+            <li key={step.id} className="flex items-center gap-2 text-xs font-medium text-foreground/80">
+              <span
+                aria-hidden="true"
+                className={`size-3 rounded-full ring-4 ${
+                  complete
+                    ? "bg-emerald-500 ring-emerald-500/15"
+                    : "bg-red-500 ring-red-500/15"
+                }`}
+              />
+              <span>{step.label}</span>
+              <span className="sr-only">
+                {complete
+                  ? t.feedback.assessmentProgressComplete
+                  : t.feedback.assessmentProgressPending}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+function isAssessmentProgressStepComplete(
+  step: "scoring" | "languageAnalysis" | "improvement",
+  assessment: AssessmentData,
+) {
+  if (assessment.failedSections[step]) return false;
+  if (step === "scoring") return !!assessment.scoring;
+  if (step === "improvement") return !!assessment.improvement;
+  return !!assessment.languageAnalysis
+    && assessment.languageAnalysis.lexicalResourceScore !== null;
 }

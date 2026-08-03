@@ -444,6 +444,12 @@ export default function WritingPageClient() {
     if (sections) {
       const nextAssessment: AssessmentData = {
         ...assessmentRef.current,
+        overview: sections.includes("overview") ? null : assessmentRef.current.overview,
+        scoring: sections.includes("scoring") ? null : assessmentRef.current.scoring,
+        languageAnalysis: sections.includes("languageAnalysis")
+          ? null
+          : assessmentRef.current.languageAnalysis,
+        improvement: sections.includes("improvement") ? null : assessmentRef.current.improvement,
         failedSections: Object.fromEntries(
           Object.entries(assessmentRef.current.failedSections)
             .filter(([section]) => !sections.includes(section)),

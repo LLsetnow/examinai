@@ -109,9 +109,18 @@ export interface Translations {
     backgroundAssessmentNotice: string;
     overall: string;
     bandScore: string;
+    assessmentLabel: string;
+    forReference: string;
+    keySignals: string;
     assessmentFailed: string;
     assessmentPartialError: string;
     assessmentIncomplete: string;
+    assessmentProgressTitle: string;
+    assessmentProgressPending: string;
+    assessmentProgressComplete: string;
+    assessmentProgressScoring: string;
+    assessmentProgressLanguage: string;
+    assessmentProgressImprovement: string;
     synonyms: string;
     topicPhrases: string;
     severeError: string;
@@ -240,9 +249,18 @@ export const translations: Record<Language, Translations> = {
       backgroundAssessmentNotice: "即使刷新或离开页面，批改也会在后台继续；完成后会自动保存到历史记录。",
       overall: "综合分数",
       bandScore: "雅思参考分数",
+      assessmentLabel: "AI 评分",
+      forReference: "仅供参考",
+      keySignals: "重点信号",
       assessmentFailed: "批改失败",
       assessmentPartialError: "部分反馈暂时未能生成。",
       assessmentIncomplete: "评分在完成前中断，部分结果未生成，请重试。",
+      assessmentProgressTitle: "批改进度",
+      assessmentProgressPending: "未完成",
+      assessmentProgressComplete: "已完成",
+      assessmentProgressScoring: "任务与结构评分",
+      assessmentProgressLanguage: "词汇、语法与原句批改",
+      assessmentProgressImprovement: "改进建议",
       synonyms: "近义词",
       topicPhrases: "相关话题",
       severeError: "严重错误或语法问题",
@@ -369,9 +387,18 @@ export const translations: Record<Language, Translations> = {
       backgroundAssessmentNotice: "The assessment continues in the background if you refresh or leave; the completed report will be saved to history.",
       overall: "Overall score",
       bandScore: "IELTS reference band",
+      assessmentLabel: "AI assessment",
+      forReference: "For reference",
+      keySignals: "Key signals",
       assessmentFailed: "Assessment failed",
       assessmentPartialError: "Some feedback could not be generated.",
       assessmentIncomplete: "The assessment ended before finishing, so some results are missing. Please retry.",
+      assessmentProgressTitle: "Assessment progress",
+      assessmentProgressPending: "Not complete",
+      assessmentProgressComplete: "Complete",
+      assessmentProgressScoring: "Task & structure scoring",
+      assessmentProgressLanguage: "Language & sentence corrections",
+      assessmentProgressImprovement: "Improvement guidance",
       synonyms: "Synonyms",
       topicPhrases: "Topic phrases",
       severeError: "Serious error or grammar issue",
