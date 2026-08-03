@@ -8,7 +8,6 @@ import {
   FileText,
   Lightbulb,
   RotateCcw,
-  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
@@ -220,14 +219,6 @@ function findMatches(essay: string, sources: HighlightSource[]): HighlightMatch[
   return matches.sort((a, b) => a.start - b.start);
 }
 
-function ScoreValue({ score }: { score: number | null }) {
-  return (
-    <span className="font-[family-name:var(--font-heading)] text-2xl font-bold tabular-nums text-primary">
-      {score ?? "—"}
-    </span>
-  );
-}
-
 function EmptyMappedFeedback({ label }: { label: string }) {
   const { t } = useI18n();
   return (
@@ -400,6 +391,7 @@ export function WritingFeedbackReport({
                   languageAnalysis={languageAnalysis}
                   overallScore={overallScore}
                   taskResponseLabel={taskResponseLabel}
+                  taskNumber={submission.taskNumber}
                   isStreaming={isStreaming}
                   assessmentProgress={assessmentProgress}
                 />
@@ -469,12 +461,35 @@ function renderEssay(
   return nodes;
 }
 
+const SIGNAL_STYLES = {
+  good: {
+    container: "bg-emerald-50",
+    icon: "bg-emerald-100 text-emerald-700",
+  },
+  warning: {
+    container: "bg-amber-50",
+    icon: "bg-amber-100 text-amber-700",
+  },
+  alert: {
+    container: "bg-red-50",
+    icon: "bg-red-100 text-red-700",
+  },
+} as const;
+
+type SignalTone = keyof typeof SIGNAL_STYLES;
+
+function signalTone(score: number | null): SignalTone {
+  if (score === null || score === 6) return "warning";
+  return score >= 7 ? "good" : "alert";
+}
+
 function SummaryPanel({
   overview,
   scoring,
   languageAnalysis,
   overallScore,
   taskResponseLabel,
+  taskNumber,
   isStreaming,
   assessmentProgress,
 }: {
@@ -483,65 +498,156 @@ function SummaryPanel({
   languageAnalysis: WritingLanguageFeedback | null;
   overallScore: number | null;
   taskResponseLabel: string;
+  taskNumber: WritingSubmission["taskNumber"];
   isStreaming: boolean;
   assessmentProgress?: ReactNode;
 }) {
   const { t } = useI18n();
   const taskResponseCode = taskResponseLabel === t.feedback.taskAchievement ? "TA" : "TR";
   const criteria = [
-    { code: taskResponseCode, fullLabel: taskResponseLabel, score: scoring?.taskResponseScore ?? null },
-    { code: "CC", fullLabel: t.feedback.coherenceCohesion, score: scoring?.coherenceScore ?? null },
-    { code: "LR", fullLabel: t.feedback.lexicalResource, score: languageAnalysis?.lexicalResourceScore ?? null },
-    { code: "GRA", fullLabel: t.feedback.grammaticalRange, score: languageAnalysis?.grammaticalRangeScore ?? null },
+    {
+      code: taskResponseCode,
+      fullLabel: taskResponseLabel,
+      score: scoring?.taskResponseScore ?? null,
+      summary: scoring?.taskResponseHighLevel ?? "",
+    },
+    {
+      code: "CC",
+      fullLabel: t.feedback.coherenceCohesion,
+      score: scoring?.coherenceScore ?? null,
+      summary: scoring?.coherenceHighLevel ?? "",
+    },
+    {
+      code: "LR",
+      fullLabel: t.feedback.lexicalResource,
+      score: languageAnalysis?.lexicalResourceScore ?? null,
+      summary: languageAnalysis?.lexicalResourceHighLevel ?? "",
+    },
+    {
+      code: "GRA",
+      fullLabel: t.feedback.grammaticalRange,
+      score: languageAnalysis?.grammaticalRangeScore ?? null,
+      summary: languageAnalysis?.grammaticalRangeHighLevel ?? "",
+    },
   ];
+  const signals = criteria.filter((criterion) => criterion.score !== null || criterion.summary);
+  const heroDescription = overview
+    ? [
+      overview.strengths[0] ? `${t.feedback.strengths}: ${overview.strengths[0]}` : "",
+      overview.weaknesses[0] ? `${t.feedback.weaknesses}: ${overview.weaknesses[0]}` : "",
+    ].filter(Boolean).join(" · ")
+    : "";
+  const detailItems = overview
+    ? [
+      ...overview.strengths.map((item) => ({ label: t.feedback.strengths, item, positive: true })),
+      ...overview.weaknesses.map((item) => ({ label: t.feedback.weaknesses, item, positive: false })),
+    ].slice(0, 4)
+    : [];
 
   return (
     <div className="space-y-5">
-      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#8f151c] via-primary to-[#ef4444] p-5 text-primary-foreground shadow-[0_14px_28px_rgba(185,28,28,0.22)] sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-white/85">{t.feedback.overall}</p>
-            <p className="mt-1 text-xs leading-5 text-white/75">{t.feedback.bandScore}</p>
-          </div>
-          <div className="text-right">
-            <span className="font-[family-name:var(--font-heading)] text-5xl font-bold tabular-nums tracking-tight">
-              {overallScore ?? "—"}
-            </span>
-          </div>
+      <div className="grid gap-[18px] rounded-2xl border border-red-200/70 bg-[linear-gradient(122deg,#fff8f8_0%,#fff_66%,#fff0f0_100%)] p-5 sm:grid-cols-[minmax(0,1fr)_13.125rem] sm:p-6">
+        <div className="min-w-0">
+          <p className="mb-1.5 text-[11px] font-extrabold uppercase tracking-[0.09em] text-primary">
+            {taskNumber === "1" ? t.writing.task1 : t.writing.task2} · {t.feedback.assessmentLabel}
+          </p>
+          <h1 className="max-w-2xl text-xl font-extrabold leading-[1.32] tracking-tight text-[#26283a] sm:text-2xl">
+            {overview?.overview ?? (isStreaming ? t.feedback.waitingForFeedback : "—")}
+          </h1>
+          {heroDescription && (
+            <p className="mt-2.5 max-w-2xl text-[13px] leading-6 text-[#686b7b]">{heroDescription}</p>
+          )}
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {criteria.map((criterion) => (
-            <div key={criterion.code} className="rounded-xl bg-white/12 px-3 py-2.5 backdrop-blur-sm">
-              <p className="min-h-8 text-[10px] font-medium leading-4 text-white/70">
-                {criterion.code}
-              </p>
-              <p className="mt-1 font-[family-name:var(--font-heading)] text-xl font-bold tabular-nums">
-                {criterion.score ?? "—"}
-              </p>
-            </div>
-          ))}
+        <div className="relative isolate flex min-h-[9.375rem] flex-col items-center justify-center overflow-hidden rounded-[14px] bg-primary text-primary-foreground">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-9 -top-9 size-[8.125rem] rounded-full border-[22px] border-white/10"
+          />
+          <p className="relative z-10 text-[11px] font-extrabold uppercase tracking-[0.08em] text-white/80">
+            {t.feedback.overall}
+          </p>
+          <strong className="relative z-10 mt-px font-[family-name:var(--font-heading)] text-[3.4375rem] font-extrabold leading-none tracking-[-0.25rem]">
+            {overallScore ?? "—"}
+          </strong>
+          <em className="relative z-10 mt-1 text-[11px] font-bold not-italic text-white/80">
+            {t.feedback.forReference}
+          </em>
         </div>
       </div>
 
-      {overview ? (
-        <div className="rounded-2xl border border-border bg-white p-4 sm:p-5">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Target className="size-4 text-primary" />
-            {t.feedback.overview}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4" aria-label={t.feedback.overall}>
+        {criteria.map((criterion) => (
+          <div
+            key={criterion.code}
+            className="min-w-0 rounded-xl border border-border bg-white px-2 py-3 text-center"
+            title={criterion.fullLabel}
+            aria-label={`${criterion.fullLabel}: ${criterion.score ?? "—"}`}
+          >
+            <p className="overflow-hidden text-ellipsis whitespace-nowrap text-[10px] font-extrabold text-[#858896]">
+              {criterion.code}
+            </p>
+            <p className="mt-1 font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none tabular-nums text-primary">
+              {criterion.score ?? "—"}
+            </p>
           </div>
-          <p className="mt-3 text-sm leading-6 text-foreground/85">{overview.overview}</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <FeedbackList
-              title={t.feedback.strengths}
-              items={overview.strengths}
-              tone="positive"
-            />
-            <FeedbackList
-              title={t.feedback.weaknesses}
-              items={overview.weaknesses}
-              tone="improve"
-            />
-          </div>
+        ))}
+      </div>
+
+      {overview || signals.length > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
+          <article className="rounded-2xl border border-border bg-white p-5">
+            <h2 className="flex items-center gap-2 text-sm font-extrabold tracking-tight text-[#303346]">
+              <b className="grid size-[22px] place-items-center rounded-[7px] bg-primary font-sans text-[11px] text-white">01</b>
+              {t.feedback.overview}
+            </h2>
+            {overview ? (
+              <>
+                <p className="mt-2.5 text-[13px] leading-6 text-[#626575]">{overview.overview}</p>
+                {detailItems.length > 0 && (
+                  <ul className="mt-3.5 grid gap-2.5 pl-0">
+                    {detailItems.map((detail, index) => (
+                      <li key={`${detail.item}-${index}`} className="relative pl-4 text-xs leading-5 text-[#525566] before:absolute before:left-0 before:top-2 before:size-1.5 before:rounded-full before:bg-primary">
+                        <span className={detail.positive ? "font-semibold text-emerald-700" : "font-semibold text-amber-700"}>
+                          {detail.label}: {" "}
+                        </span>
+                        {detail.item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <p className="mt-2.5 text-sm text-muted-foreground">{t.feedback.waitingForFeedback}</p>
+            )}
+          </article>
+
+          <aside className="rounded-2xl border border-border bg-white p-5">
+            <h2 className="flex items-center gap-2 text-sm font-extrabold tracking-tight text-[#303346]">
+              <b className="grid size-[22px] place-items-center rounded-[7px] bg-primary font-sans text-[11px] text-white">02</b>
+              {t.feedback.keySignals}
+            </h2>
+            <div className="mt-2.5 grid gap-2.5">
+              {signals.length > 0 ? signals.map((criterion) => {
+                const tone = signalTone(criterion.score);
+                const styles = SIGNAL_STYLES[tone];
+                return (
+                  <div key={criterion.code} className={`grid grid-cols-[28px_1fr] items-start gap-2.5 rounded-[10px] p-2.5 ${styles.container}`}>
+                    <span className={`grid size-[25px] place-items-center rounded-lg text-[11px] font-extrabold ${styles.icon}`}>
+                      {tone === "good" ? "✓" : tone === "warning" ? "!" : "×"}
+                    </span>
+                    <div>
+                      <strong className="block text-xs text-[#3c3f50]">{criterion.fullLabel}</strong>
+                      <span className="mt-0.5 block text-[11px] leading-[1.45] text-[#747786]">
+                        {criterion.summary || `${t.feedback.bandScore}: ${criterion.score ?? "—"}`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <p className="text-xs text-muted-foreground">{t.feedback.waitingForFeedback}</p>
+              )}
+            </div>
+          </aside>
         </div>
       ) : isStreaming ? (
         <LoadingPanel
@@ -549,35 +655,6 @@ function SummaryPanel({
           progress={assessmentProgress}
         />
       ) : null}
-
-      {(scoring || languageAnalysis) && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <CriterionCard
-            label={criteria[0].code}
-            fullLabel={criteria[0].fullLabel}
-            score={scoring?.taskResponseScore ?? null}
-            summary={scoring?.taskResponseHighLevel ?? ""}
-          />
-          <CriterionCard
-            label={criteria[1].code}
-            fullLabel={criteria[1].fullLabel}
-            score={scoring?.coherenceScore ?? null}
-            summary={scoring?.coherenceHighLevel ?? ""}
-          />
-          <CriterionCard
-            label={criteria[2].code}
-            fullLabel={criteria[2].fullLabel}
-            score={languageAnalysis?.lexicalResourceScore ?? null}
-            summary={languageAnalysis?.lexicalResourceHighLevel ?? ""}
-          />
-          <CriterionCard
-            label={criteria[3].code}
-            fullLabel={criteria[3].fullLabel}
-            score={languageAnalysis?.grammaticalRangeScore ?? null}
-            summary={languageAnalysis?.grammaticalRangeHighLevel ?? ""}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -768,61 +845,6 @@ function TopicsPanel({
           </div>
         </button>
       ))}
-    </div>
-  );
-}
-
-function FeedbackList({
-  title,
-  items,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  tone: "positive" | "improve";
-}) {
-  const positive = tone === "positive";
-  return (
-    <div className={`rounded-xl p-3 ${positive ? "bg-emerald-50" : "bg-amber-50"}`}>
-      <p className={`text-xs font-semibold ${positive ? "text-emerald-800" : "text-amber-800"}`}>{title}</p>
-      <ul className="mt-2 space-y-1.5">
-        {items.length > 0 ? items.map((item, index) => (
-          <li key={`${item}-${index}`} className="flex gap-2 text-xs leading-5 text-foreground/75">
-            <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${positive ? "bg-emerald-500" : "bg-amber-500"}`} />
-            {item}
-          </li>
-        )) : (
-          <li className="text-xs text-muted-foreground">—</li>
-        )}
-      </ul>
-    </div>
-  );
-}
-
-function CriterionCard({
-  label,
-  fullLabel,
-  score,
-  summary,
-}: {
-  label: string;
-  fullLabel: string;
-  score: number | null;
-  summary: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p
-          className="text-xs font-semibold leading-5 text-foreground/80"
-          title={fullLabel}
-          aria-label={fullLabel}
-        >
-          {label}
-        </p>
-        <ScoreValue score={score} />
-      </div>
-      {summary && <p className="mt-2 text-xs leading-5 text-muted-foreground">{summary}</p>}
     </div>
   );
 }

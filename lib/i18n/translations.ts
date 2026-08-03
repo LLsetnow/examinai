@@ -108,6 +108,9 @@ export interface Translations {
     waitingForFeedback: string;
     overall: string;
     bandScore: string;
+    assessmentLabel: string;
+    forReference: string;
+    keySignals: string;
     assessmentFailed: string;
     assessmentPartialError: string;
     assessmentIncomplete: string;
@@ -244,6 +247,9 @@ export const translations: Record<Language, Translations> = {
       waitingForFeedback: "正在生成反馈…",
       overall: "综合分数",
       bandScore: "雅思参考分数",
+      assessmentLabel: "AI 评分",
+      forReference: "仅供参考",
+      keySignals: "重点信号",
       assessmentFailed: "批改失败",
       assessmentPartialError: "部分反馈暂时未能生成。",
       assessmentIncomplete: "评分在完成前中断，部分结果未生成，请重试。",
@@ -378,6 +384,9 @@ export const translations: Record<Language, Translations> = {
       waitingForFeedback: "Generating feedback…",
       overall: "Overall score",
       bandScore: "IELTS reference band",
+      assessmentLabel: "AI assessment",
+      forReference: "For reference",
+      keySignals: "Key signals",
       assessmentFailed: "Assessment failed",
       assessmentPartialError: "Some feedback could not be generated.",
       assessmentIncomplete: "The assessment ended before finishing, so some results are missing. Please retry.",
