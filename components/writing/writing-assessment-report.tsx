@@ -1,6 +1,7 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Alert,
@@ -62,6 +63,7 @@ export function WritingAssessmentReport({
   feedbackLanguage,
 }: WritingAssessmentReportProps) {
   const { t } = useI18n();
+  const [showBackgroundNotice, setShowBackgroundNotice] = useState(true);
   const failedSections = Object.keys(assessment.failedSections);
   // Loaders should stop once the stream reaches any terminal state, whether it
   // completed successfully or ended early.
@@ -122,9 +124,18 @@ export function WritingAssessmentReport({
         </div>
       </header>
 
-      {isStreaming ? (
-        <div className="shrink-0 border-b border-amber-100 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 sm:px-6">
+      {isStreaming && showBackgroundNotice ? (
+        <div className="relative shrink-0 border-b border-amber-100 bg-amber-50 px-10 py-2 text-center text-xs font-medium text-amber-900 sm:px-12">
           {t.feedback.backgroundAssessmentNotice}
+          <button
+            type="button"
+            onClick={() => setShowBackgroundNotice(false)}
+            aria-label={t.feedback.backgroundAssessmentNoticeClose}
+            title={t.feedback.backgroundAssessmentNoticeClose}
+            className="absolute top-1/2 right-3 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-amber-700/75 transition-colors hover:bg-amber-100 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700/40 sm:right-5"
+          >
+            <X className="size-3.5" aria-hidden="true" />
+          </button>
         </div>
       ) : null}
 

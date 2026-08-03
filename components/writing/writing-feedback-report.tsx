@@ -543,6 +543,7 @@ function SummaryPanel({
       ...overview.weaknesses.map((item) => ({ label: t.feedback.weaknesses, item, positive: false })),
     ].slice(0, 4)
     : [];
+  const heroTitle = overview ? getHeroTitle(overview.overview) : "";
 
   return (
     <div className="space-y-5">
@@ -552,7 +553,7 @@ function SummaryPanel({
             {taskNumber === "1" ? t.writing.task1 : t.writing.task2} · {t.feedback.assessmentLabel}
           </p>
           <h1 className="max-w-2xl text-xl font-extrabold leading-[1.32] tracking-tight text-[#26283a] sm:text-2xl">
-            {overview?.overview ?? (isStreaming ? t.feedback.waitingForFeedback : "—")}
+            {heroTitle || (isStreaming ? t.feedback.waitingForFeedback : "—")}
           </h1>
           {heroDescription && (
             <p className="mt-2.5 max-w-2xl text-[13px] leading-6 text-[#686b7b]">{heroDescription}</p>
@@ -657,6 +658,15 @@ function SummaryPanel({
       ) : null}
     </div>
   );
+}
+
+function getHeroTitle(overview: string) {
+  const trimmed = overview.trim();
+  const firstSentence = trimmed.match(/^(.+?[。！？.!?])(?:\s|$)/)?.[1] ?? trimmed;
+  const characters = Array.from(firstSentence);
+  return characters.length > 60
+    ? `${characters.slice(0, 60).join("").trimEnd()}…`
+    : firstSentence;
 }
 
 function CorrectionsPanel({
