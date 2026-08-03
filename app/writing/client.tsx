@@ -29,6 +29,13 @@ import {
   type LocalHistoryDirectoryStatus,
 } from "@/lib/browser/local-history-directory";
 import {
+  createAssessmentJobId,
+  loadPendingAssessmentJobs,
+  removePendingAssessmentJob,
+  savePendingAssessmentJob,
+  type PendingAssessmentJob,
+} from "@/lib/browser/assessment-jobs";
+import {
   WritingAssessmentReport,
   type AssessmentData,
 } from "@/components/writing/writing-assessment-report";
@@ -38,9 +45,9 @@ import { useI18n } from "@/lib/i18n/provider";
 import type { Language } from "@/lib/i18n/translations";
 import type { AiProviderSettings, CambridgeQuestionSource, WritingSubmission } from "@/lib/types";
 import {
-  createWritingReportFile,
   createWritingReportFileName,
   serializeWritingReport,
+  type WritingReportFile,
 } from "@/lib/writing-report";
 
 type Screen = "form" | "report" | "history";
@@ -96,32 +103,23 @@ function createEmptyAssessment(): AssessmentData {
   };
 }
 
-/**
- * Whether a section holds its final payload. Language analysis streams a
- * temporary correction event first (scores still null), so a non-null value
- * alone does not mean the section finished.
- */
-function isSectionComplete(section: string, assessment: AssessmentData): boolean {
-  if (section === "overview") return !!assessment.overview;
-  if (section === "scoring") return !!assessment.scoring;
-  if (section === "improvement") return !!assessment.improvement;
-  if (section === "languageAnalysis") {
-    return !!assessment.languageAnalysis
-      && assessment.languageAnalysis.lexicalResourceScore !== null;
-  }
-  return false;
+interface BackgroundJobStatus {
+  jobId: string;
+  status: "pending" | "completed" | "failed" | "unknown";
+  report?: WritingReportFile;
+  error?: string;
 }
 
-function calculateOverallScore(assessment: AssessmentData) {
-  if (!assessment.scoring || !assessment.languageAnalysis) return null;
-  const scores = [
-    assessment.scoring.taskResponseScore,
-    assessment.scoring.coherenceScore,
-    assessment.languageAnalysis.lexicalResourceScore,
-    assessment.languageAnalysis.grammaticalRangeScore,
-  ];
-  if (scores.some((score) => score === null)) return null;
-  return Math.round(((scores as number[]).reduce((sum, score) => sum + score, 0) / 4) * 2) / 2;
+function assessmentFromReport(report: WritingReportFile, current = createEmptyAssessment()): AssessmentData {
+  return {
+    overview: report.feedback.overview ?? current.overview,
+    scoring: report.feedback.scoring ?? current.scoring,
+    languageAnalysis: report.feedback.languageAnalysis ?? current.languageAnalysis,
+    improvement: report.feedback.improvement ?? current.improvement,
+    done: true,
+    incomplete: false,
+    failedSections: { ...current.failedSections, ...report.failedSections },
+  };
 }
 
 export default function WritingPageClient() {
@@ -150,9 +148,11 @@ export default function WritingPageClient() {
   const [historyDirectoryStatus, setHistoryDirectoryStatus] = useState<LocalHistoryDirectoryStatus | null>(null);
   const [historyDirectoryName, setHistoryDirectoryName] = useState("");
   const [providerSettings, setProviderSettings] = useState<AiProviderSettings | undefined>(loadProviderSettings);
-  const controllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const autoSavedSubmissionRef = useRef<WritingSubmission | null>(null);
+  const activeJobIdRef = useRef<string | null>(null);
+  const assessmentRef = useRef(assessment);
+  const screenRef = useRef(screen);
+  const runningJobsRef = useRef(new Set<string>());
 
   const wordCount = essay.trim() ? essay.trim().split(/\s+/).length : 0;
   const canAssess = question.trim().length > 0 && essay.trim().length > 0;
@@ -163,32 +163,21 @@ export default function WritingPageClient() {
   }
 
   useEffect(() => {
-    return () => controllerRef.current?.abort();
-  }, []);
+    assessmentRef.current = assessment;
+  }, [assessment]);
 
   useEffect(() => {
-    if (!submission || !assessment.done || autoSavedSubmissionRef.current === submission) return;
+    screenRef.current = screen;
+  }, [screen]);
 
-    const exportedAt = new Date();
-    const report = createWritingReportFile({
-      submission,
-      overview: assessment.overview,
-      scoring: assessment.scoring,
-      languageAnalysis: assessment.languageAnalysis,
-      improvement: assessment.improvement,
-      overallScore: calculateOverallScore(assessment),
-      feedbackLanguage: language,
-      failedSections: assessment.failedSections,
-      exportedAt,
-    });
-
-    void saveJsonToLocalHistoryDirectory(
-      createWritingReportFileName(submission.taskNumber, exportedAt),
-      serializeWritingReport(report),
-    ).then((status) => {
-      if (status === "saved") autoSavedSubmissionRef.current = submission;
-    });
-  }, [assessment, language, submission]);
+  useEffect(() => {
+    const pendingJobs = loadPendingAssessmentJobs();
+    for (const job of pendingJobs) void runAssessmentJob(job);
+    // Pending jobs are intentionally resumed when the page is opened again.
+    // Provider settings are read from this browser and are never persisted in
+    // the pending-job record.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerSettings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -258,6 +247,7 @@ export default function WritingPageClient() {
   }
 
   async function showHistory() {
+    activeJobIdRef.current = null;
     setScreen("history");
     setIsLoadingHistory(true);
     setHistoryError(false);
@@ -302,9 +292,9 @@ export default function WritingPageClient() {
       return;
     }
 
-    autoSavedSubmissionRef.current = record.submission;
+    activeJobIdRef.current = null;
     setSubmission(record.submission);
-    setAssessment({
+    const nextAssessment: AssessmentData = {
       overview: record.feedback.overview,
       scoring: record.feedback.scoring,
       languageAnalysis: record.feedback.languageAnalysis,
@@ -312,7 +302,9 @@ export default function WritingPageClient() {
       done: true,
       incomplete: false,
       failedSections: record.failedSections,
-    });
+    };
+    assessmentRef.current = nextAssessment;
+    setAssessment(nextAssessment);
     setScreen("report");
   }
 
@@ -336,116 +328,139 @@ export default function WritingPageClient() {
     }
   }
 
-  async function requestAssessment(
-    nextSubmission: WritingSubmission,
-    sections?: string[],
-  ) {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
+  async function fetchBackgroundJobStatus(jobId: string): Promise<BackgroundJobStatus> {
+    const response = await fetch(`/api/writing/assess/background?jobId=${encodeURIComponent(jobId)}`);
+    const data = await response.json().catch(() => ({})) as BackgroundJobStatus;
+    if (response.status === 404) return { jobId, status: "unknown" };
+    if (!response.ok) throw new Error(data.error ?? "Unable to read background assessment status.");
+    return data;
+  }
 
-    if (sections) {
-      setAssessment((current) => {
-        const failedSections = { ...current.failedSections };
-        for (const section of sections) delete failedSections[section];
-        return { ...current, failedSections, done: false, incomplete: false };
-      });
+  async function startBackgroundAssessment(job: PendingAssessmentJob): Promise<BackgroundJobStatus> {
+    const response = await fetch("/api/writing/assess/background", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...job.submission,
+        jobId: job.jobId,
+        feedbackLanguage: job.feedbackLanguage,
+        providerSettings,
+        ...(job.sections ? { sections: job.sections } : {}),
+      }),
+    });
+    const data = await response.json().catch(() => ({})) as BackgroundJobStatus & { error?: string };
+    if (!response.ok && response.status !== 202) {
+      throw new Error(data.error ?? "Unable to start the background assessment.");
     }
+    return data;
+  }
+
+  async function saveBackgroundReport(job: PendingAssessmentJob, report: WritingReportFile) {
+    const exportedAt = new Date(report.exportedAt);
+    const status = await saveJsonToLocalHistoryDirectory(
+      createWritingReportFileName(report.submission.taskNumber, exportedAt),
+      serializeWritingReport(report),
+    );
+    if (status === "saved") removePendingAssessmentJob(job.jobId);
+    if (status === "saved" && screenRef.current === "history") void showHistory();
+    return status;
+  }
+
+  async function runAssessmentJob(job: PendingAssessmentJob) {
+    if (runningJobsRef.current.has(job.jobId)) return;
+    runningJobsRef.current.add(job.jobId);
 
     try {
-      const response = await fetch("/api/writing/assess", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...nextSubmission,
-          feedbackLanguage: language,
-          providerSettings,
-          ...(sections ? { sections } : {}),
-        }),
-        signal: controller.signal,
-      });
+      let status = await fetchBackgroundJobStatus(job.jobId);
+      if (status.status === "unknown") status = await startBackgroundAssessment(job);
 
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.error ?? `Assessment failed: ${response.statusText || response.status}`);
-      }
-      if (!response.body) {
-        throw new Error("Assessment response did not include a stream.");
+      while (status.status === "pending") {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        status = await fetchBackgroundJobStatus(job.jobId);
+        if (status.status === "unknown") status = await startBackgroundAssessment(job);
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let receivedDone = false;
-
-      function applyEvents(lines: string[]) {
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const { type, data } = JSON.parse(line.slice(6));
-            if (type === "done") receivedDone = true;
-            setAssessment((current) => {
-              if (type === "overview") return { ...current, overview: data };
-              if (type === "scoring") return { ...current, scoring: data };
-              if (type === "languageAnalysis") return { ...current, languageAnalysis: data };
-              if (type === "improvement") return { ...current, improvement: data };
-              if (type === "section_error") {
-                return {
-                  ...current,
-                  failedSections: { ...current.failedSections, [data.section]: data.message },
-                };
-              }
-              if (type === "done") return { ...current, done: true };
-              return current;
-            });
-          } catch {
-            // Ignore incomplete SSE fragments.
-          }
+      if (status.status === "completed" && status.report) {
+        const isCurrentReport = activeJobIdRef.current === job.jobId && screenRef.current === "report";
+        if (isCurrentReport) {
+          const nextAssessment = assessmentFromReport(status.report, assessmentRef.current);
+          setAssessment(nextAssessment);
+          assessmentRef.current = nextAssessment;
+          await saveBackgroundReport(job, {
+            ...status.report,
+            feedback: {
+              overview: nextAssessment.overview,
+              scoring: nextAssessment.scoring,
+              languageAnalysis: nextAssessment.languageAnalysis,
+              improvement: nextAssessment.improvement,
+            },
+            failedSections: nextAssessment.failedSections,
+          });
+        } else {
+          await saveBackgroundReport(job, status.report);
         }
+        return;
       }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        applyEvents(lines);
-      }
-      if (buffer.trim()) applyEvents([buffer]);
-      // The stream is only "complete" when the server emitted its done event.
-      // If the reader closed first (proxy timeout, truncated response), flag the
-      // unfinished sections so the user sees a clear notice and can retry,
-      // instead of a partial report masquerading as final.
-      if (!receivedDone) {
-        const requested = sections ?? ALL_SECTIONS;
-        setAssessment((current) => {
-          const failedSections = { ...current.failedSections };
-          for (const section of requested) {
-            if (!isSectionComplete(section, current)) {
-              failedSections[section] = t.feedback.assessmentIncomplete;
-            }
-          }
-          return { ...current, incomplete: true, failedSections };
-        });
+      removePendingAssessmentJob(job.jobId);
+      if (activeJobIdRef.current === job.jobId && screenRef.current === "report") {
+        const message = status.error ?? "The background assessment failed.";
+        setAssessment((current) => ({
+          ...current,
+          incomplete: true,
+          failedSections: {
+            ...current.failedSections,
+            ...Object.fromEntries((job.sections ?? ALL_SECTIONS).map((section) => [section, message])),
+          },
+        }));
       }
     } catch (error) {
-      if (controller.signal.aborted) return;
-      const message = error instanceof Error ? error.message : "Assessment failed";
-      const failed = sections ?? ALL_SECTIONS;
-      setAssessment((current) => ({
-        ...current,
-        incomplete: true,
-        failedSections: Object.fromEntries(failed.map((section) => [section, message])),
-      }));
+      if (activeJobIdRef.current === job.jobId && screenRef.current === "report") {
+        const message = error instanceof Error ? error.message : "The background assessment failed.";
+        setAssessment((current) => ({
+          ...current,
+          incomplete: true,
+          failedSections: {
+            ...current.failedSections,
+            ...Object.fromEntries((job.sections ?? ALL_SECTIONS).map((section) => [section, message])),
+          },
+        }));
+      }
+    } finally {
+      runningJobsRef.current.delete(job.jobId);
     }
+  }
+
+  function requestAssessment(nextSubmission: WritingSubmission, sections?: string[]) {
+    const job: PendingAssessmentJob = {
+      jobId: createAssessmentJobId(),
+      createdAt: new Date().toISOString(),
+      feedbackLanguage: language,
+      submission: nextSubmission,
+      sections,
+    };
+    savePendingAssessmentJob(job);
+    activeJobIdRef.current = job.jobId;
+    if (sections) {
+      const nextAssessment: AssessmentData = {
+        ...assessmentRef.current,
+        failedSections: Object.fromEntries(
+          Object.entries(assessmentRef.current.failedSections)
+            .filter(([section]) => !sections.includes(section)),
+        ),
+        done: false,
+        incomplete: false,
+      };
+      assessmentRef.current = nextAssessment;
+      setAssessment(nextAssessment);
+    }
+    void runAssessmentJob(job);
   }
 
   function regenerateCorrections() {
     if (!submission) return;
     // A repaired historical report should be written back as a fresh local
     // JSON export after the language section completes.
-    autoSavedSubmissionRef.current = null;
     void requestAssessment(submission, ["languageAnalysis"]);
   }
 
@@ -460,17 +475,20 @@ export default function WritingPageClient() {
       questionSource,
     };
     setSubmission(nextSubmission);
-    setAssessment(createEmptyAssessment());
+    const emptyAssessment = createEmptyAssessment();
+    assessmentRef.current = emptyAssessment;
+    setAssessment(emptyAssessment);
     setScreen("report");
     void requestAssessment(nextSubmission);
   }
 
   function startNewEssay() {
-    controllerRef.current?.abort();
-    autoSavedSubmissionRef.current = null;
     setScreen("form");
     setSubmission(null);
-    setAssessment(createEmptyAssessment());
+    const emptyAssessment = createEmptyAssessment();
+    assessmentRef.current = emptyAssessment;
+    setAssessment(emptyAssessment);
+    activeJobIdRef.current = null;
   }
 
   if (screen === "report" && submission) {

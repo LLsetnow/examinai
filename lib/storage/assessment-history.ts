@@ -63,10 +63,11 @@ function toSummary(record: AssessmentHistoryEntry): AssessmentHistorySummary {
 /** Saves a local-only history record. This directory is ignored by Git. */
 export async function saveAssessmentHistory(
   entry: Omit<AssessmentHistoryEntry, "id" | "createdAt">,
+  requestedId?: string,
 ) {
   await mkdir(HISTORY_DIRECTORY, { recursive: true });
 
-  const id = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID()}`;
+  const id = requestedId ?? `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID()}`;
   const record: AssessmentHistoryEntry = {
     id,
     createdAt: new Date().toISOString(),

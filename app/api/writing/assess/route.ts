@@ -15,7 +15,9 @@ import {
   WRITING_EXPERT_4_TASK2_PROMPT,
 } from "@/lib/ai/prompts";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
+
+const BACKGROUND_JOB_ID_HEADER = "x-examinai-background-job-id";
 
 type FeedbackLanguage = "zh" | "en";
 
@@ -626,6 +628,7 @@ export async function POST(req: Request) {
   const feedbackLanguage: FeedbackLanguage = requestedLanguage === "en" ? "en" : "zh";
   const parsedQuestionSource = parseCambridgeQuestionSource(questionSource);
   const parsedProviderSettings = parseProviderSettings(providerSettings);
+  const backgroundJobId = req.headers.get(BACKGROUND_JOB_ID_HEADER);
 
   // Which sections to run — default to all four
   const sectionsToRun: Set<string> = requestedSections
@@ -886,7 +889,7 @@ export async function POST(req: Request) {
           },
           feedback: results,
           failedSections,
-        });
+        }, backgroundJobId && /^[a-zA-Z0-9-]{16,100}$/.test(backgroundJobId) ? backgroundJobId : undefined);
       } catch (error) {
         console.error("Failed to save local assessment history:", error);
       }
