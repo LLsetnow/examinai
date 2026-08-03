@@ -691,6 +691,20 @@ export async function POST(req: Request) {
         );
       }
 
+      // Keep the SSE connection alive during slow model calls. A long section
+      // (language analysis, improvement) can leave the stream silent for longer
+      // than Nginx's proxy_read_timeout (180s), which closes the client
+      // connection mid-assessment and leaves the report partial even though the
+      // server finishes. This comment line is ignored by EventSource clients and
+      // self-clears once the client disconnects (enqueue throws).
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(": keepalive\n\n"));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 15000);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const results: Record<string, any> = {};
       const failedSections: Record<string, string> = {};
@@ -891,6 +905,7 @@ export async function POST(req: Request) {
         console.error("Failed to save local assessment history:", error);
       }
 
+      clearInterval(heartbeat);
       sendEvent("done", {});
 
       controller.close();
