@@ -13,6 +13,7 @@ import {
   WRITING_EXPERT_3_SCORE_PROMPT,
   WRITING_EXPERT_4_TASK1_PROMPT,
   WRITING_EXPERT_4_TASK2_PROMPT,
+  TASK1_CHART_EXTRACTION_PROMPT,
 } from "@/lib/ai/prompts";
 
 export const maxDuration = 120;
@@ -94,7 +95,7 @@ async function analyseTask1Chart(imageUrl: string, providerSettings?: AiProvider
         {
           role: "user",
           content: [
-            { type: "text", text: "Extract factual notes for an IELTS Task 1 assessor. First transcribe every clearly readable data point by series and year. Then identify title, units, main trends, crossings, extremes, and projections. Explicitly state any rise-then-fall or fall-then-rise pattern; never call a series continuously rising or falling if it changes direction. Do not grade the essay and do not invent unreadable values. Write concise notes in English." },
+            { type: "text", text: TASK1_CHART_EXTRACTION_PROMPT },
             { type: "image_url", image_url: { url: zhipuImageInput(imageUrl) } },
           ],
         },
